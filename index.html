@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>家教紀錄</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --text: #1f2430;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --primary: #2f6fed;
+    --primary-soft: #e8f0ff;
+    --ok: #15803d;
+    --ok-soft: #e6f6ec;
+    --warn: #b45309;
+    --warn-soft: #fff4e0;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    background: var(--bg); color: var(--text); font-size: 16px; line-height: 1.5;
+  }
+  button { font: inherit; cursor: pointer; }
+  input, textarea { font: inherit; color: inherit; }
+
+  /* 版面 */
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 220px; background: var(--card); border-right: 1px solid var(--line);
+    padding: 16px 12px; flex-shrink: 0;
+  }
+  .sidebar .who { padding: 4px 10px 16px; }
+  .sidebar .who b { font-size: 18px; display: block; }
+  .sidebar .who span { color: var(--muted); font-size: 14px; }
+  .nav-item {
+    display: block; width: 100%; text-align: left; border: 0; background: transparent;
+    padding: 10px 12px; border-radius: 10px; color: var(--text); margin-bottom: 4px;
+  }
+  .nav-item.on { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+  .main { flex: 1; min-width: 0; }
+  .topbar {
+    display: none; align-items: center; gap: 8px; padding: 10px 16px;
+    background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5;
+  }
+  .topbar .menu-btn { border: 0; background: transparent; font-size: 22px; padding: 2px 6px; line-height: 1; }
+  .topbar b { font-size: 17px; }
+  .content { max-width: 640px; margin: 0 auto; padding: 20px 16px 40px; }
+  .page-title { font-size: 22px; margin: 0 0 4px; }
+  .page-sub { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+
+  .card { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.05); margin-bottom: 14px; }
+
+  /* 表單 */
+  .row3 { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px; }
+  label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 4px; }
+  .field { margin-bottom: 14px; min-width: 0; }
+  input[type=date], input[type=time], textarea {
+    width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: #fff; min-width: 0;
+  }
+  textarea { resize: vertical; min-height: 80px; }
+  input:focus, textarea:focus { outline: 2px solid var(--primary); border-color: transparent; }
+  .calc { display: flex; gap: 16px; font-size: 15px; color: var(--muted); }
+  .calc b { color: var(--text); }
+  .btns { display: flex; gap: 10px; }
+  .btn { flex: 1; border: 0; border-radius: 12px; padding: 13px; font-weight: 600; font-size: 16px; }
+  .btn.ghost { background: #eef0f4; color: var(--text); }
+  .btn.primary { background: var(--primary); color: #fff; }
+  .btn.sm { flex: none; padding: 6px 12px; font-size: 14px; border-radius: 8px; font-weight: 500; }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 8px; text-align: center; }
+
+  /* 月份紀錄 */
+  .month-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .month-nav button { border: 1px solid var(--line); background: var(--card); border-radius: 10px; width: 40px; height: 40px; font-size: 18px; }
+  .month-nav h2 { margin: 0; font-size: 20px; }
+  .lesson { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .lesson:last-child { border-bottom: 0; }
+  .lesson .date { width: 56px; text-align: center; flex-shrink: 0; }
+  .lesson .date b { display: block; font-size: 18px; }
+  .lesson .date span { font-size: 13px; color: var(--muted); }
+  .lesson .info { flex: 1; min-width: 0; }
+  .lesson .time { font-weight: 500; }
+  .lesson .meta { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lesson .actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .lesson.future .date b, .lesson.future .time { color: var(--muted); }
+  .badge { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 99px; margin-left: 6px; vertical-align: 1px; }
+  .badge.ok { background: var(--ok-soft); color: var(--ok); }
+  .badge.draft { background: var(--warn-soft); color: var(--warn); }
+  .badge.todo { background: #f0f1f4; color: var(--muted); }
+  .badge.leave { background: #f1ebff; color: #6d28d9; }
+  .badge.stop { background: #fdecec; color: #b91c1c; }
+  .badge.moved { background: var(--primary-soft); color: var(--primary); }
+  .lesson.off .date b, .lesson.off .t { color: var(--muted); text-decoration: line-through; }
+  .note.muted { color: var(--muted); }
+  .off-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 18px; font-size: 14px; color: var(--muted); }
+  .empty { text-align: center; color: var(--muted); padding: 20px 0; }
+
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+  .summary div span { display: block; font-size: 13px; color: var(--muted); }
+  .summary div b { font-size: 20px; }
+  .summary .fee b { color: var(--primary); }
+  .note { font-size: 13px; color: var(--warn); margin-top: 10px; text-align: center; }
+
+  .next { background: var(--primary); color: #fff; }
+  .next span { opacity: .85; font-size: 14px; }
+  .next b { display: block; font-size: 20px; margin-top: 2px; }
+  /* 段考倒數：小字靠右 */
+  .split { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .exam { font-size: 13px; color: var(--muted); white-space: nowrap; margin-left: auto; }
+  .next .exam { color: #fff; opacity: .8; }
+  .exam-line { text-align: right; margin: -4px 0 10px; }
+
+  .bank-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; gap: 8px; }
+  .bank-row span { color: var(--muted); font-size: 14px; flex-shrink: 0; }
+  .card h3 { margin: 0 0 8px; font-size: 16px; }
+
+  /* 詳細 彈出視窗 */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: flex-end; justify-content: center; z-index: 30; }
+  .modal-bg.show { display: flex; }
+  .modal { background: var(--card); width: 100%; max-width: 520px; border-radius: 18px 18px 0 0; padding: 20px 16px 28px; max-height: 85vh; overflow: auto; }
+  @media (min-width: 600px) { .modal-bg { align-items: center; } .modal { border-radius: 18px; } }
+  .modal h3 { margin: 0 0 4px; }
+  .modal .sub { color: var(--muted); font-size: 14px; margin-bottom: 14px; }
+  .modal dt { font-size: 14px; color: var(--muted); margin-top: 12px; }
+  .modal dd { margin: 2px 0 0; white-space: pre-wrap; }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1f2430; color: #fff; padding: 10px 18px; border-radius: 99px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 40; }
+  .toast.show { opacity: 1; }
+
+  .overlay { display: none; }
+
+  /* 手機：側邊欄收成 ☰ */
+  @media (max-width: 760px) {
+    .topbar { display: flex; }
+    .sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 20; transform: translateX(-100%); transition: transform .2s; }
+    .sidebar.open { transform: none; }
+    .overlay.show { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 15; }
+    .row3 { grid-template-columns: 1fr 1fr; }
+    .row3 .field:first-child { grid-column: 1 / -1; }
+  }
+  .parent .sidebar, .parent .topbar .menu-btn { display: none; }
+  .parent .topbar { display: flex; }
+  .btn:disabled { opacity: .5; cursor: default; }
+</style>
+</head>
+<body>
+
+<div class="layout" id="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="who"><b id="sideName"></b><span id="sideSub"></span></div>
+    <button class="nav-item" data-view="record">✏️ 記錄本堂課</button>
+    <button class="nav-item" data-view="month">📅 本月紀錄</button>
+  </aside>
+  <div class="overlay" id="overlay"></div>
+  <div class="main">
+    <div class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="選單">☰</button>
+      <b id="topName"></b>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* 資料由 Google Apps Script（Code.gs）提供，網址中的代碼決定是哪位學生、老師或家長 */
+const API = 'https://script.google.com/macros/s/AKfycbxql480BUoQFFVMoJinnnXhfCGSIgSIQ_yeAC2liJcaQW0UWP7a8NL28AjOzpynVKN_Og/exec';
+const Q = new URLSearchParams(location.search);
+const TOKEN = Q.get('t') || '';
+const TEACHER = !!TOKEN;
+let DATA = null;
+
+async function api(body) {
+  const res = body
+    ? await fetch(API, { method: 'POST', body: JSON.stringify(body) }) // 純文字 POST，避免跨網域預檢
+    : await fetch(API + '?api=1&' + (TEACHER ? 't=' + encodeURIComponent(TOKEN) : 'p=' + encodeURIComponent(Q.get('p') || '')));
+  const r = await res.json();
+  if (!r.ok) throw new Error(r.error);
+  return r.data;
+}
+
+/* ===== 工具 ===== */
+function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+const TODAY = ymd(new Date());
+const WD = ['日', '一', '二', '三', '四', '五', '六'];
+function wd(date) { return WD[new Date(date + 'T00:00').getDay()]; }
+function md(date) { const [, m, d] = date.split('-'); return +m + '/' + +d; }
+
+// 段考倒數：距離段考 3 週（11/19–21）／距離段考 5 天（…）／段考中・加油！／考完或沒填就不顯示
+function examText() {
+  const e = S().exam;
+  if (!e || e.end < TODAY) return '';
+  if (e.start <= TODAY) return '段考中・加油！';
+  const [, sm] = e.start.split('-'), [, em, ed] = e.end.split('-');
+  const range = e.end === e.start ? md(e.start) : md(e.start) + '–' + (em === sm ? +ed : md(e.end));
+  const days = Math.round((new Date(e.start + 'T00:00') - new Date(TODAY + 'T00:00')) / 864e5);
+  return `距離段考 ${days >= 7 ? Math.ceil(days / 7) + ' 週' : days + ' 天'}（${range}）`;
+}
+const examSpan = () => { const t = examText(); return t ? `<span class="exam">${t}</span>` : ''; };
+function hours(st, en) {
+  if (!st || !en) return 0;
+  const [a, b] = st.split(':').map(Number), [c, d] = en.split(':').map(Number);
+  return Math.max(0, Math.round(((c * 60 + d) - (a * 60 + b)) / 30) / 2); // 以 0.5 小時為單位
+}
+function money(n) { return '$' + n.toLocaleString(); }
+function esc(s) { return String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+const OFF = ['請假', '停課']; // 保留這筆但不上課、不收費
+function sorted(ls) { return [...ls].sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)); }
+
+/* ===== 狀態 ===== */
+const state = { view: TEACHER ? 'record' : 'month', month: TODAY.slice(0, 7), editId: null, busy: false };
+const S = () => DATA.student;
+const LESSONS = () => DATA.lessons;
+const byId = id => LESSONS().find(l => l.id === id);
+
+/* ===== 畫面 ===== */
+function render() {
+  const s = S();
+  document.getElementById('app').classList.toggle('parent', !TEACHER);
+  document.getElementById('sideName').textContent = s.name;
+  document.getElementById('sideSub').textContent = s.subject + '・時薪 ' + money(s.rate);
+  document.getElementById('topName').textContent = TEACHER ? s.name : '上課紀錄';
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('on', b.dataset.view === state.view));
+  const c = document.getElementById('content');
+  if (!TEACHER) c.innerHTML = parentView();
+  else c.innerHTML = state.view === 'record' ? recordView() : monthView(true);
+  closeSidebar();
+}
+
+// 預設帶入：今天那堂 → 否則最近一堂尚未記錄的
+function defaultLesson() {
+  const todo = LESSONS().filter(l => l.status !== '已上課' && !OFF.includes(l.status));
+  const today = todo.find(l => l.date === TODAY);
+  if (today) return today;
+  const t = +new Date(TODAY);
+  return todo.sort((a, b) => Math.abs(new Date(a.date) - t) - Math.abs(new Date(b.date) - t))[0] || null;
+}
+
+function recordView() {
+  const s = S();
+  const l = state.editId ? byId(state.editId) : defaultLesson();
+  const last = sorted(LESSONS()).pop();
+  const v = l || { date: TODAY, start: last ? last.start : '', end: last ? last.end : '', progress: '', homework: '', note: '', status: '' };
+  const editing = !!state.editId;
+  const h = hours(v.start, v.end);
+  const id = l ? l.id : 'null';
+  return `
+    <h1 class="page-title">${editing ? '編輯紀錄' : '記錄本堂課'}</h1>
+    <div class="page-sub split"><span>${esc(s.name)}・${esc(s.subject)}${v.status === '已上課' ? ' <span class="badge ok">家長已可看到</span>' : badges(v)}</span>${examSpan()}</div>
+    <div class="card">
+      <div class="row3">
+        <div class="field"><label>日期</label><input type="date" id="fDate" value="${v.date}"></div>
+        <div class="field"><label>開始</label><input type="time" id="fStart" value="${v.start}" oninput="recalc()"></div>
+        <div class="field"><label>結束</label><input type="time" id="fEnd" value="${v.end}" oninput="recalc()"></div>
+      </div>
+      <div class="calc" id="calc">時數 <b>${h}</b> 小時　學費 <b>${money(h * s.rate)}</b></div>
+    </div>
+    <div class="card">
+      <div class="field"><label>1. 上課進度</label><textarea id="fProgress" placeholder="今天上了什麼">${esc(v.progress)}</textarea></div>
+      <div class="field"><label>2. 課後練習</label><textarea id="fHomework" placeholder="課後要練習的">${esc(v.homework)}</textarea></div>
+      <div class="field" style="margin-bottom:0"><label>3. 備註</label><textarea id="fNote" placeholder="學習狀況、提醒家長的事（可空白）">${esc(v.note)}</textarea></div>
+    </div>
+    <div class="btns">
+      <button class="btn ghost save-btn" onclick="save('暫存', ${id})">暫存</button>
+      <button class="btn primary save-btn" onclick="save('已上課', ${id})">${v.status === '已上課' ? '儲存' : '新增'}</button>
+    </div>
+    <p class="hint">暫存：只有你看得到　｜　新增：家長就看得到</p>
+    <div class="off-row">這堂沒上課？
+      <button class="btn sm ghost save-btn" onclick="save('請假', ${id})">標記請假</button>
+      <button class="btn sm ghost save-btn" onclick="save('停課', ${id})">標記停課</button>
+    </div>`;
+}
+
+// 狀態標籤：已上課／暫存中(家長端資料不會有)／未記錄／請假／停課，加上調課(原日期)
+function badges(l) {
+  let b = '';
+  if (l.status === '已上課') b += '<span class="badge ok">已上課</span>';
+  else if (l.status === '請假') b += '<span class="badge leave">請假</span>';
+  else if (l.status === '停課') b += '<span class="badge stop">停課</span>';
+  else if (l.status === '暫存') b += '<span class="badge draft">暫存中</span>';
+  else if (l.date < TODAY) b += '<span class="badge todo">未記錄</span>';
+  if (l.orig) b += `<span class="badge moved">調課・原 ${md(l.orig)}</span>`;
+  return b;
+}
+
+function recalc() {
+  const h = hours(document.getElementById('fStart').value, document.getElementById('fEnd').value);
+  document.getElementById('calc').innerHTML = `時數 <b>${h}</b> 小時　學費 <b>${money(h * S().rate)}</b>`;
+}
+
+function save(status, id) {
+  if (state.busy) return;
+  const data = {
+    date: fDate.value, start: fStart.value, end: fEnd.value,
+    progress: fProgress.value.trim(), homework: fHomework.value.trim(), note: fNote.value.trim(), status,
+    rowDate: id ? byId(id).date : '',
+  };
+  if (!data.date || !data.start || !data.end) return toast('請填日期與時間');
+  if (status === '已上課' && !data.progress) return toast('請填寫上課進度');
+  setBusy(true);
+  api({ t: TOKEN, id, data })
+    .then(res => {
+      DATA = res;
+      setBusy(false);
+      toast(status === '暫存' ? '已暫存（家長看不到）' : OFF.includes(status) ? `已標記${status}，不計學費` : '已新增，家長可以看到了');
+      state.editId = null; state.view = 'month'; state.month = data.date.slice(0, 7);
+      render(); scrollTo(0, 0);
+    })
+    .catch(err => { setBusy(false); toast('儲存失敗：' + err.message); });
+}
+function setBusy(on) {
+  state.busy = on;
+  document.querySelectorAll('.save-btn').forEach(b => b.disabled = on);
+  if (on) toast('儲存中…', true);
+}
+
+function monthView(teacher) {
+  const s = S();
+  const ls = sorted(LESSONS().filter(l => l.date.startsWith(state.month)));
+  const [y, m] = state.month.split('-');
+  const done = ls.filter(l => l.status === '已上課');
+  const hrs = done.reduce((a, l) => a + hours(l.start, l.end), 0);
+  const drafts = ls.filter(l => l.status === '暫存').length;
+  const leaves = ls.filter(l => l.status === '請假').length;
+  const stops = ls.filter(l => l.status === '停課').length;
+  const offNote = [leaves && `請假 ${leaves} 堂`, stops && `停課 ${stops} 堂`].filter(Boolean).join('、');
+
+  const rows = ls.map(l => {
+    const off = OFF.includes(l.status);
+    const recorded = l.status === '已上課' || l.status === '暫存';
+    // 有紀錄（含請假／停課）才有「詳細」；老師另有「編輯」
+    const btns = off || recorded
+      ? `<button class="btn sm ghost" onclick="detail(${l.id})">詳細</button>${teacher ? `<button class="btn sm ghost" onclick="edit(${l.id})">編輯</button>` : ''}`
+      : '';
+    return `<div class="lesson ${off ? 'off' : l.date >= TODAY && !l.status ? 'future' : ''}">
+      <div class="date"><b>${md(l.date)}</b><span>週${wd(l.date)}</span></div>
+      <div class="info"><div class="time"><span class="t">${l.start}–${l.end}</span>${badges(l)}</div></div>
+      <div class="actions">${btns}</div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="month-nav">
+      <button onclick="shiftMonth(-1)" aria-label="上個月">‹</button>
+      <h2>${y} 年 ${+m} 月</h2>
+      <button onclick="shiftMonth(1)" aria-label="下個月">›</button>
+    </div>
+    ${teacher && examText() ? `<div class="exam-line">${examSpan()}</div>` : ''}
+    <div class="card">${rows || '<div class="empty">這個月還沒有排課</div>'}</div>
+    <div class="card">
+      <div class="summary">
+        <div><span>預排堂數</span><b>${ls.length}</b></div>
+        <div><span>已上時數</span><b>${hrs}</b></div>
+        <div class="fee"><span>${teacher ? '本月學費' : '應繳學費'}</span><b>${money(hrs * s.rate)}</b></div>
+      </div>
+      ${offNote ? `<div class="note muted">${offNote}</div>` : ''}
+      ${teacher && drafts ? `<div class="note">有 ${drafts} 筆暫存，按「新增」後才會計入學費</div>` : ''}
+    </div>
+    ${teacher ? `<button class="btn primary" style="width:100%" onclick="copyLine()">📋 複製給家長的 LINE 訊息</button>` : ''}`;
+}
+
+function parentView() {
+  const b = DATA.bank;
+  const next = sorted(LESSONS()).find(l => l.date >= TODAY && l.status !== '已上課' && !OFF.includes(l.status));
+  return `
+    ${next ? `<div class="card next"><div class="split"><span>下次上課${next.orig ? `（調課，原 ${md(next.orig)}）` : ''}</span>${examSpan()}</div><b>${md(next.date)}（${wd(next.date)}）${next.start}–${next.end}</b></div>`
+      : examText() ? `<div class="exam-line">${examSpan()}</div>` : ''}
+    ${monthView(false)}
+    ${b.account ? `<div class="card" style="margin-top:14px">
+      <h3>匯款資訊</h3>
+      <div class="bank-row"><span>銀行</span><b>${esc(b.bank)}</b></div>
+      <div class="bank-row"><span>帳號</span><b>${esc(b.account)}</b><button class="btn sm ghost" onclick="copy(DATA.bank.account,'已複製帳號')">複製</button></div>
+      <div class="bank-row"><span>戶名</span><b>${esc(b.holder)}</b></div>
+    </div>` : ''}`;
+}
+
+function detail(id) {
+  const l = byId(id);
+  document.getElementById('modal').innerHTML = `
+    <h3>${md(l.date)}（${wd(l.date)}）上課紀錄</h3>
+    <div class="sub">${l.start}–${l.end}・${hours(l.start, l.end)} 小時${l.orig ? `・調課（原 ${md(l.orig)}）` : ''}</div>
+    <dl>
+      <dt>上課進度</dt><dd>${esc(l.progress) || '—'}</dd>
+      <dt>課後練習</dt><dd>${esc(l.homework) || '—'}</dd>
+      <dt>備註</dt><dd>${esc(l.note) || '—'}</dd>
+    </dl>
+    <button class="btn ghost" style="width:100%;margin-top:20px" onclick="closeModal()">關閉</button>`;
+  document.getElementById('modalBg').classList.add('show');
+}
+function closeModal() { document.getElementById('modalBg').classList.remove('show'); }
+function edit(id) { state.editId = id; state.view = 'record'; render(); scrollTo(0, 0); }
+function shiftMonth(n) {
+  const [y, m] = state.month.split('-').map(Number);
+  state.month = ymd(new Date(y, m - 1 + n, 1)).slice(0, 7);
+  render();
+}
+
+function copyLine() {
+  const s = S();
+  const ls = LESSONS().filter(l => l.date.startsWith(state.month));
+  const done = ls.filter(l => l.status === '已上課');
+  const hrs = done.reduce((a, l) => a + hours(l.start, l.end), 0);
+  const leaves = ls.filter(l => l.status === '請假').length;
+  const m = +state.month.split('-')[1];
+  const msg = `${s.parent}您好，${m} 月共上 ${done.length} 堂、${hrs} 小時${leaves ? `（請假 ${leaves} 堂）` : ''}，學費 ${money(hrs * s.rate)}。\n上課紀錄與匯款資訊：${DATA.parentUrl || '（尚未設定網頁網址）'}`;
+  copy(msg, '已複製 LINE 訊息');
+}
+// 網頁在 Google 的框架裡，剪貼簿 API 可能被擋，先用舊方法
+function copy(text, ok) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  let done = false;
+  try { done = document.execCommand('copy'); } catch (e) {}
+  ta.remove();
+  if (done) return toast(ok);
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => toast(ok), () => prompt('請長按複製', text));
+  else prompt('請長按複製', text);
+}
+let tt;
+function toast(msg, stay) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(tt);
+  if (!stay) tt = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* 側邊欄 */
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+menuBtn.onclick = () => { sidebar.classList.add('open'); overlay.classList.add('show'); };
+overlay.onclick = closeSidebar;
+document.querySelectorAll('.nav-item').forEach(b => b.onclick = () => {
+  state.view = b.dataset.view; state.editId = null; state.month = TODAY.slice(0, 7); render();
+});
+modalBg.onclick = e => { if (e.target === modalBg) closeModal(); };
+
+// 先顯示載入中，拿到資料再畫面
+document.getElementById('app').classList.toggle('parent', !TEACHER);
+content.innerHTML = '<div class="empty">載入中…</div>';
+api()
+  .then(d => { DATA = d; document.title = TEACHER ? d.student.name + '・家教紀錄' : '上課紀錄'; render(); })
+  .catch(err => { content.innerHTML = `<div class="empty">${esc(err.message || '網址錯誤，請向老師確認網址。')}</div>`; });
+</script>
+</body>
+</html>
+
