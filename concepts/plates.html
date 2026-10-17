@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>板塊運動與地形</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #1f2430; --muted: #6b7280; --line: #e5e7eb;
+    --primary: #2f6fed; --primary-soft: #e8f0ff; --radius: 14px;
+    --sea: #a5d8ff; --mantle: #ffd8a8; --magma: #e8590c; --ocean: #5c7080; --cont: #c9a26b; --arrow: #c92a2a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text); line-height: 1.5; font-family: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px 0; background: var(--card); }
+  header a { color: var(--primary); text-decoration: none; font-size: 15px; }
+  header h1 { font-size: 20px; margin: 0; }
+  .tabs { display: flex; gap: 4px; overflow-x: auto; padding: 8px 16px 0; background: var(--card); border-bottom: 1px solid var(--line); scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs button { flex: none; border: 0; background: transparent; font: inherit; font-size: 15px; padding: 8px 14px; color: var(--muted); border-bottom: 3px solid transparent; cursor: pointer; }
+  .tabs button.on { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+  main { max-width: 1100px; margin: 0 auto; padding: 10px 16px 24px; }
+  .card { background: var(--card); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .title { font-size: 18px; font-weight: 700; }
+  svg { display: block; width: 100%; height: auto; max-height: calc(100vh - 330px); min-height: 180px; margin: 4px auto; }
+  .ctrl { display: flex; align-items: center; gap: 10px; }
+  .btn { border: 0; border-radius: 10px; padding: 8px 16px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; background: var(--primary); color: #fff; flex: none; }
+  .btn.ghost { background: #eef0f4; color: var(--text); }
+  /* 進度卷軸（同其他觀念頁樣式） */
+  input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; height: 44px; margin: 0; background: transparent; cursor: pointer; }
+  input[type=range]::-webkit-slider-runnable-track { height: 8px; background: #dee2e6; border-radius: 99px; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; margin-top: -11px; border-radius: 50%; background: var(--primary); border: 4px solid #fff; box-shadow: 0 1px 5px rgba(0,0,0,.4); }
+  input[type=range]::-moz-range-track { height: 8px; background: #dee2e6; border-radius: 99px; }
+  input[type=range]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: var(--primary); border: 4px solid #fff; }
+  input[type=range]:focus { outline: none; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; width: 7em; white-space: nowrap; }
+  td b { color: var(--primary); }
+  .lbl { font-size: 18px; fill: #343a40; text-anchor: middle; font-family: inherit; font-weight: 600; paint-order: stroke; stroke: rgba(255,255,255,.85); stroke-width: 4px; }
+  .sm { font-size: 15px; font-weight: 500; }
+</style>
+</head>
+<body>
+<header>
+  <a href="./">‹ 觀念目錄</a>
+  <h1>板塊運動與地形</h1>
+</header>
+<nav class="tabs" id="tabs"></nav>
+<main>
+  <div class="card">
+    <div class="title" id="title"></div>
+    <svg id="svg" viewBox="0 0 1000 360" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="ctrl">
+      <button class="btn" id="play">▶ 播放</button>
+      <button class="btn ghost" id="replay">↺ 重播</button>
+      <input type="range" id="t" min="0" max="1" step="0.001" value="0" aria-label="動畫進度">
+    </div>
+  </div>
+  <div class="card"><table id="info"></table></div>
+</main>
+
+<script>
+/* ===== 小工具 ===== */
+const W = 1000, H = 360;
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp01 = t => Math.max(0, Math.min(1, t));
+const seg01 = (t, a, b) => clamp01((t - a) / (b - a)); // 把整段動畫的 t 切出 a～b 這一小段
+const LAYERS = ['#e9c46a', '#f4a261', '#d4a373', '#b08968']; // 岩層顏色
+const label = (x, y, s, cls = 'lbl') => `<text x="${x}" y="${y}" class="${cls}">${s}</text>`;
+// 粗箭頭（表示受力或移動方向）
+function arrow(x1, y1, x2, y2, color = 'var(--arrow)', w = 7) {
+  const a = Math.atan2(y2 - y1, x2 - x1), L = 18;
+  const p = (ang) => `${x2 - L * Math.cos(a + ang)},${y2 - L * Math.sin(a + ang)}`;
+  return `<line x1="${x1}" y1="${y1}" x2="${x2 - 10 * Math.cos(a)}" y2="${y2 - 10 * Math.sin(a)}" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/>` +
+    `<polygon points="${x2},${y2} ${p(0.45)} ${p(-0.45)}" fill="${color}"/>`;
+}
+// 一塊有岩層紋路的長方形板塊
+function strata(x, y, w, h, n = 4) {
+  let s = '';
+  for (let i = 0; i < n; i++) s += `<rect x="${x}" y="${y + i * h / n}" width="${w}" height="${h / n + 0.5}" fill="${LAYERS[i % 4]}"/>`;
+  return s + `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="#7f5539" stroke-width="1.5"/>`;
+}
+const mantle = (y) => `<rect x="0" y="${y}" width="${W}" height="${H - y}" fill="var(--mantle)"/>` + label(80, H - 16, '地函', 'lbl sm');
+const sea = (y) => `<rect x="0" y="0" width="${W}" height="${y}" fill="#e7f5ff"/>`;
+
+/* ===== 各種板塊運動 ===== */
+const TABS = [
+  {
+    id: 'diverge', name: '分離（張裂）', title: '張裂型板塊邊界：兩個板塊互相分開',
+    info: [['受力', '<b>張力</b>（兩邊互相拉開）'], ['發生什麼', '板塊分開，地函的岩漿從裂縫上升，冷卻後形成<b>新的地殼</b>'], ['形成地形', '海底：<b>中洋脊</b>；陸地：<b>裂谷</b>'], ['例子', '大西洋中洋脊、東非大裂谷']],
+    draw(t) {
+      const gap = lerp(16, 300, t), top = 160, th = 70, cx = W / 2;
+      let s = sea(top) + mantle(top + th);
+      // 岩漿上升
+      const my = lerp(330, 250, seg01(t, 0, 0.4));
+      s += `<ellipse cx="${cx}" cy="${my}" rx="${40 + gap / 4}" ry="40" fill="var(--magma)" opacity=".85"/>` +
+        arrow(cx, 330, cx, top + th + 10, '#d9480f', 6);
+      // 新形成的地殼：左右對稱的條紋（越靠中間越新）
+      const n = Math.max(1, Math.floor(gap / 24));
+      for (let i = 0; i < n; i++) {
+        const w = gap / 2 / n, c = i % 2 ? '#ff8787' : '#e03131', o = 1 - i / (n + 2) * 0.6;
+        s += `<rect x="${cx + i * w}" y="${top}" width="${w + 0.5}" height="${th}" fill="${c}" opacity="${o}"/>` +
+          `<rect x="${cx - (i + 1) * w}" y="${top}" width="${w + 0.5}" height="${th}" fill="${c}" opacity="${o}"/>`;
+      }
+      s += strata(0, top, cx - gap / 2, th) + strata(cx + gap / 2, top, W - cx - gap / 2, th);
+      // 中洋脊隆起
+      s += `<path d="M${cx - gap / 2 - 40},${top} Q${cx},${top - 40 - t * 10} ${cx + gap / 2 + 40},${top}Z" fill="#c0392b" opacity=".9"/>`;
+      s += arrow(cx - 120 - gap / 4, 110, cx - 230 - gap / 4, 110) + arrow(cx + 120 + gap / 4, 110, cx + 230 + gap / 4, 110);
+      if (t > 0.25) s += label(cx, top - 55 - t * 10, '中洋脊') + label(cx, top + th / 2 + 6, '新形成的地殼', 'lbl sm') + label(cx + 90, 320, '岩漿上升', 'lbl sm');
+      s += label(140, top + 45, '板塊', 'lbl sm') + label(W - 140, top + 45, '板塊', 'lbl sm') + label(130, 60, '海水', 'lbl sm');
+      return s;
+    },
+  },
+  {
+    id: 'subduct', name: '聚合：隱沒', title: '聚合型板塊邊界（隱沒）：海洋板塊鑽到大陸板塊下方',
+    info: [['受力', '<b>擠壓力</b>（兩個板塊互相靠近）'], ['發生什麼', '較重的<b>海洋板塊</b>隱沒到較輕的<b>大陸板塊</b>下方；隱沒的板塊深入地底熔融產生岩漿'], ['形成地形', '<b>海溝</b>、<b>火山</b>，地震頻繁'], ['例子', '日本、南美洲安地斯山脈、台灣東北部（琉球海溝）']],
+    draw(t) {
+      let s = sea(190) + mantle(190);
+      // 海洋板塊沿著路徑往右移動、向下隱沒（用移動的條紋表示運動）
+      const path = 'M-40,215 L520,215 Q590,218 640,262 L960,470';
+      s += `<path d="${path}" fill="none" stroke="var(--ocean)" stroke-width="44"/>` +
+        `<path d="${path}" fill="none" stroke="#869aa8" stroke-width="44" stroke-dasharray="40 40" stroke-dashoffset="${-t * 480}"/>`;
+      // 大陸板塊
+      s += `<path d="M560,190 L600,150 L1000,150 L1000,250 L700,250 Q630,240 590,215Z" fill="var(--cont)" stroke="#7f5539" stroke-width="1.5"/>`;
+      // 火山：岩漿從隱沒板塊上升，最後噴發
+      const mt = seg01(t, 0.2, 0.85), my = lerp(330, 170, mt);
+      s += `<path d="M720,150 L790,${150 - 70} L860,150Z" fill="#8d6e63" stroke="#5d4037" stroke-width="2"/>`;
+      s += `<circle cx="790" cy="${my}" r="${14 + 6 * mt}" fill="var(--magma)"/>` + (t > 0.15 ? `<line x1="790" y1="${my}" x2="790" y2="330" stroke="var(--magma)" stroke-width="6" opacity=".6"/>` : '');
+      if (t > 0.85) s += `<path d="M775,80 Q790,${40 - (t - 0.85) * 120} 805,80Z" fill="#fa5252"/>` + label(790, 30, '火山');
+      // 地震（隱沒帶閃爍）
+      if (t > 0.3) [[600, 240], [680, 300], [760, 345]].forEach(([x, y], i) => {
+        if ((Math.floor(t * 20) + i) % 3 === 0) s += `<text x="${x}" y="${y}" font-size="26" fill="#fab005">✸</text>`;
+      });
+      s += `<path d="M545,195 L565,212 L585,195" fill="none" stroke="#1c7ed6" stroke-width="3"/>` + label(565, 182, '海溝') +
+        label(250, 220, '海洋板塊（較重）', 'lbl sm') + label(900, 205, '大陸板塊', 'lbl sm') + arrow(160, 120, 300, 120) +
+        (t > 0.3 ? label(700, 300, '地震', 'lbl sm') : '') + label(130, 60, '海水', 'lbl sm');
+      return s;
+    },
+  },
+  {
+    id: 'collide', name: '聚合：碰撞', title: '聚合型板塊邊界（碰撞）：兩個大陸板塊相撞',
+    info: [['受力', '<b>擠壓力</b>'], ['發生什麼', '兩個大陸板塊都很輕、不易隱沒，相撞後地殼被擠壓、變厚、向上隆起'], ['形成地形', '高大的<b>山脈</b>（岩層同時產生褶皺與斷層）'], ['例子', '喜馬拉雅山（印度板塊撞上歐亞板塊）、台灣（島弧與歐亞大陸碰撞）']],
+    draw(t) {
+      const close = seg01(t, 0, 0.35), up = seg01(t, 0.3, 1), cx = W / 2, top = 180, th = 70;
+      const gap = lerp(140, 0, close), mh = 110 * up, mw = 160 + 120 * up;
+      let s = sea(top) + mantle(top + th);
+      s += strata(0, top, cx - gap / 2, th) + strata(cx + gap / 2, top, W - cx - gap / 2, th);
+      if (up > 0) {
+        // 擠高的山脈與山根，裡面畫彎曲的岩層
+        s += `<path d="M${cx - mw},${top} Q${cx},${top - 2 * mh} ${cx + mw},${top} L${cx + mw * 0.6},${top + th} Q${cx},${top + th + mh * 0.8} ${cx - mw * 0.6},${top + th}Z" fill="#b08968" stroke="#7f5539" stroke-width="2"/>`;
+        for (let i = 1; i < 4; i++) {
+          const k = i / 4;
+          s += `<path d="M${cx - mw * (1 - k * 0.3)},${top + th * k} Q${cx},${top - 2 * mh * (1 - k) + th * k} ${cx + mw * (1 - k * 0.3)},${top + th * k}" fill="none" stroke="${LAYERS[i]}" stroke-width="5"/>`;
+        }
+        s += label(cx, top - mh - 18, '高山（造山運動）');
+      }
+      s += arrow(60, 130, 200, 130) + arrow(W - 60, 130, W - 200, 130) +
+        label(220, top + 45, '大陸板塊', 'lbl sm') + label(W - 220, top + 45, '大陸板塊', 'lbl sm');
+      return s;
+    },
+  },
+  {
+    id: 'fold', name: '褶皺', title: '褶皺：岩層受擠壓而彎曲',
+    info: [['受力', '<b>擠壓力</b>（水平方向推擠）'], ['發生什麼', '岩層有彈性時不會斷裂，而是<b>彎曲</b>成波浪狀'], ['形狀', '向上拱起的部分叫<b>背斜</b>，向下凹的部分叫<b>向斜</b>'], ['例子', '台灣西部麓山帶的褶皺、各地山區露出的彎曲岩層']],
+    draw(t) {
+      const A = 55 * t, half = lerp(420, 330, t), lam = lerp(330, 270, t), cx = W / 2;
+      const y = (x, base) => base - A * Math.cos(2 * Math.PI * (x - cx) / lam);
+      const curve = (base, dir) => {
+        const pts = [];
+        for (let i = 0; i <= 60; i++) { const x = cx - half + 2 * half * i / 60; pts.push(`${x},${y(x, base)}`); }
+        return dir ? pts : pts.reverse();
+      };
+      let s = '';
+      for (let i = 0; i < 4; i++) {
+        const b1 = 150 + i * 38, b2 = b1 + 38;
+        s += `<polygon points="${curve(b1, true).join(' ')} ${curve(b2, false).join(' ')}" fill="${LAYERS[i]}" stroke="#7f5539" stroke-width="1"/>`;
+      }
+      s += arrow(cx - half - 120, 225, cx - half - 15, 225) + arrow(cx + half + 120, 225, cx + half + 15, 225);
+      if (t > 0.5) s += label(cx, y(cx, 150) - 16, '背斜（向上拱）') + label(cx - lam / 2, y(cx - lam / 2, 150) - 16, '向斜') + label(cx + lam / 2, y(cx + lam / 2, 150) - 16, '向斜');
+      s += label(cx - half - 70, 200, '擠壓', 'lbl sm') + label(cx + half + 70, 200, '擠壓', 'lbl sm');
+      return s;
+    },
+  },
+  {
+    id: 'normal', name: '正斷層', title: '正斷層：受張力，上盤往下滑',
+    info: [['受力', '<b>張力</b>（兩邊拉開）'], ['發生什麼', '岩層斷裂，斷層面上方的<b>上盤</b>沿著斷層面<b>往下滑</b>'], ['怎麼記', '「正」斷層 ＝ 被拉開 ＝ 上盤下降'], ['例子', '裂谷、地塹地形']],
+    draw: t => fault(t, +1),
+  },
+  {
+    id: 'reverse', name: '逆斷層', title: '逆斷層：受擠壓，上盤往上爬',
+    info: [['受力', '<b>擠壓力</b>'], ['發生什麼', '岩層斷裂，<b>上盤</b>沿著斷層面<b>往上爬</b>到下盤上方'], ['怎麼記', '「逆」斷層 ＝ 被擠壓 ＝ 上盤上升'], ['例子', '車籠埔斷層（1999 年 921 集集大地震）；台灣西部許多斷層都是逆斷層']],
+    draw: t => fault(t, -1),
+  },
+];
+
+/* 斷層：dir=+1 正斷層（上盤往下），-1 逆斷層（上盤往上） */
+function fault(t, dir) {
+  const x0 = 200, x1 = 800, y0 = 130, y1 = 320, fa = [450, y0], fb = [560, y1];
+  const len = 70 * t, ux = (fb[0] - fa[0]), uy = (fb[1] - fa[1]), n = Math.hypot(ux, uy);
+  const dx = dir * len * ux / n, dy = dir * len * uy / n; // 沿著斷層面移動
+  const layers = () => { let s = ''; for (let i = 0; i < 4; i++) s += `<rect x="${x0 - 100}" y="${y0 + i * (y1 - y0) / 4}" width="${x1 - x0 + 200}" height="${(y1 - y0) / 4 + 0.5}" fill="${LAYERS[i]}"/>`; return s; };
+  const foot = `${x0},${y0} ${fa[0]},${fa[1]} ${fb[0]},${fb[1]} ${x0},${y1}`;
+  const hang = `${fa[0]},${fa[1]} ${x1},${y0} ${x1},${y1} ${fb[0]},${fb[1]}`;
+  let s = `<clipPath id="cf"><polygon points="${foot}"/></clipPath><clipPath id="ch"><polygon points="${hang}"/></clipPath>` +
+    `<clipPath id="ground"><rect x="0" y="0" width="${W}" height="${y1 + 2}"/></clipPath>` +
+    `<g clip-path="url(#ground)">` +
+    `<g clip-path="url(#cf)">${layers()}</g><polygon points="${foot}" fill="none" stroke="#7f5539" stroke-width="2"/>` +
+    `<g transform="translate(${dx},${dy})"><g clip-path="url(#ch)">${layers()}</g><polygon points="${hang}" fill="none" stroke="#7f5539" stroke-width="2"/></g></g>` +
+    `<line x1="${fa[0] - 30 * ux / n}" y1="${fa[1] - 30 * uy / n}" x2="${fb[0]}" y2="${fb[1]}" stroke="#c92a2a" stroke-width="4" stroke-dasharray="10 6"/>` +
+    label(fa[0] - 70, fa[1] - 26, '斷層面') + label(320, 230, '下盤', 'lbl') + label(680 + dx, 230 + dy, '上盤', 'lbl') +
+    arrow(620 + dx * 0.6, 200 + dy * 0.6, 620 + dx * 0.6 + dir * 40 * ux / n, 200 + dy * 0.6 + dir * 40 * uy / n, '#343a40', 5);
+  // 受力箭頭
+  s += dir > 0
+    ? arrow(170, 80, 50, 80) + arrow(830, 80, 950, 80) + label(110, 60, '張力', 'lbl sm') + label(890, 60, '張力', 'lbl sm')
+    : arrow(50, 80, 170, 80) + arrow(950, 80, 830, 80) + label(110, 60, '擠壓', 'lbl sm') + label(890, 60, '擠壓', 'lbl sm');
+  return s;
+}
+
+/* ===== 動畫控制 ===== */
+const $ = id => document.getElementById(id);
+const DUR = 4000; // 一段動畫 4 秒
+let cur = TABS[0], t = 0, playing = false, last = 0;
+$('tabs').innerHTML = TABS.map(x => `<button data-id="${x.id}">${x.name}</button>`).join('');
+$('tabs').onclick = e => { const b = e.target.closest('button'); if (b) show(b.dataset.id); };
+
+function render() {
+  $('svg').innerHTML = `<clipPath id="all"><rect width="${W}" height="${H}"/></clipPath><g clip-path="url(#all)">${cur.draw(t)}</g>`;
+  $('t').value = t;
+}
+function setPlaying(on) {
+  playing = on; $('play').textContent = on ? '⏸ 暫停' : '▶ 播放';
+  if (on) { last = performance.now(); requestAnimationFrame(tick); }
+}
+function tick(now) {
+  if (!playing) return;
+  t = Math.min(1, t + (now - last) / DUR); last = now;
+  render();
+  if (t >= 1) setPlaying(false); else requestAnimationFrame(tick);
+}
+$('play').onclick = () => { if (!playing && t >= 1) t = 0; setPlaying(!playing); };
+$('replay').onclick = () => { t = 0; render(); setPlaying(true); };
+$('t').oninput = e => { setPlaying(false); t = +e.target.value; render(); };
+
+function show(id) {
+  cur = TABS.find(x => x.id === id);
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.id === id));
+  $('title').textContent = cur.title;
+  $('info').innerHTML = cur.info.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+  t = 0; render(); setPlaying(true); // 切換後自動播放一次
+}
+show(TABS[0].id);
+</script>
+</body>
+</html>

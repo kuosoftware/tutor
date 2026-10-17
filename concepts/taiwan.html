@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>台灣的形成</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #1f2430; --muted: #6b7280; --line: #e5e7eb;
+    --primary: #2f6fed; --primary-soft: #e8f0ff; --radius: 14px;
+    --eura: #c9a26b; --euraOcean: #8d99ae; --psp: #9775fa; --pspDark: #7048e8; --magma: #e8590c; --arrow: #c92a2a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text); line-height: 1.5; font-family: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--line); }
+  header a { color: var(--primary); text-decoration: none; font-size: 15px; }
+  header h1 { font-size: 20px; margin: 0; }
+  main { max-width: 1150px; margin: 0 auto; padding: 10px 16px 24px; }
+  .card { background: var(--card); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  /* 步驟按鈕 */
+  .steps { display: flex; gap: 8px; flex-wrap: wrap; }
+  .steps button { flex: 1 1 140px; border: 2px solid var(--line); background: #fff; border-radius: 12px; padding: 8px 10px; font: inherit; font-size: 15px; cursor: pointer; text-align: left; color: var(--muted); }
+  .steps button b { display: block; font-size: 13px; color: var(--muted); }
+  .steps button.on { border-color: var(--primary); background: var(--primary-soft); color: var(--text); }
+  .steps button.on b { color: var(--primary); }
+  .steps button.done { color: var(--text); }
+  .stage { display: grid; gap: 12px; }
+  @media (min-width: 900px) { .stage { grid-template-columns: 1fr 260px; } }
+  svg { display: block; width: 100%; height: auto; }
+  #sec { max-height: calc(100vh - 300px); min-height: 200px; }
+  .when { color: var(--primary); font-weight: 700; font-size: 14px; }
+  .stitle { font-size: 19px; font-weight: 700; margin: 0 0 2px; }
+  .desc { font-size: 16px; margin: 0; }
+  .nav { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .btn { border: 0; border-radius: 10px; padding: 8px 16px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; background: var(--primary); color: #fff; }
+  .btn.ghost { background: #eef0f4; color: var(--text); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .maptitle { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
+  .lbl { font-size: 17px; fill: #343a40; text-anchor: middle; font-family: inherit; font-weight: 600; paint-order: stroke; stroke: rgba(255,255,255,.9); stroke-width: 4px; }
+  .sm { font-size: 14px; font-weight: 500; }
+  .big { font-size: 22px; fill: #c92a2a; }
+</style>
+</head>
+<body>
+<header>
+  <a href="./">‹ 觀念目錄</a>
+  <h1>台灣的形成：板塊碰撞</h1>
+</header>
+<main>
+  <div class="card"><div class="steps" id="steps"></div></div>
+  <div class="stage">
+    <div class="card">
+      <div class="when" id="when"></div>
+      <p class="stitle" id="stitle"></p>
+      <p class="desc" id="desc"></p>
+      <svg id="sec" viewBox="0 0 1000 380" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="nav">
+        <button class="btn ghost" id="prev">‹ 上一步</button>
+        <button class="btn ghost" id="again">↺ 重播這一步</button>
+        <button class="btn" id="next">下一步 ›</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="maptitle">俯視示意圖（從天空往下看）</div>
+      <svg id="map" viewBox="0 0 260 300"></svg>
+      <p class="maptitle" style="margin-top:6px">左邊是剖面圖：從南邊看過去的地底切面（左西右東）</p>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ===== 步驟內容：每一步對應一組畫面參數，按下去就從上一步動畫過去 =====
+   arc：菲律賓海板塊前緣（海溝）位置；volc：火山島大小；mtn：台灣山脈高度；quake：地震 */
+const STEPS = [
+  { name: '板塊隱沒', when: '很久以前', title: '隱沒帶形成火山島弧',
+    desc: '歐亞板塊南邊的海洋地殼（南海）隱沒到菲律賓海板塊的下方，隱沒的板塊在地底熔融產生岩漿，岩漿上升，在海上形成一串火山島：呂宋島弧。',
+    k: { arc: 760, volc: 1, mtn: 0, quake: 0 } },
+  { name: '往西北移動', when: '數百萬年間', title: '菲律賓海板塊帶著島弧靠近',
+    desc: '菲律賓海板塊往西北方移動，帶著呂宋島弧越來越靠近歐亞大陸的邊緣；中間的海洋地殼不斷隱沒、消失。',
+    k: { arc: 560, volc: 1, mtn: 0, quake: 0 } },
+  { name: '碰撞開始', when: '約 600 萬年前', title: '島弧撞上大陸邊緣（蓬萊造山運動）',
+    desc: '呂宋島弧撞上歐亞大陸邊緣，大陸邊緣海底堆積的沉積岩層受到強烈擠壓，產生褶皺與斷層，開始隆起、露出海面——台灣島誕生。',
+    k: { arc: 470, volc: 1, mtn: 0.6, quake: 0 } },
+  { name: '持續擠壓', when: '數百萬年間', title: '台灣越長越高',
+    desc: '兩個板塊持續碰撞推擠，岩層不斷隆起形成中央山脈；島弧本身則成為海岸山脈，兩者之間的板塊交界就是花東縱谷。',
+    k: { arc: 432, volc: 1, mtn: 1, quake: 0 } },
+  { name: '現在', when: '現在', title: '碰撞還在進行',
+    desc: '菲律賓海板塊仍以每年約 8 公分的速度往西北推擠，所以台灣的山還在長高，也因為板塊擠壓，台灣地震頻繁、斷層很多（例如車籠埔斷層）。',
+    k: { arc: 426, volc: 1, mtn: 1.08, quake: 1 } },
+];
+const START = { arc: 760, volc: 0, mtn: 0, quake: 0 }; // 第 1 步動畫的起點：還沒有火山島
+
+/* ===== 小工具 ===== */
+const W = 1000, H = 380, SL = 130; // SL：海平面
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const label = (x, y, s, cls = 'lbl') => `<text x="${x}" y="${y}" class="${cls}">${s}</text>`;
+function arrow(x1, y1, x2, y2, color = 'var(--arrow)', w = 7) {
+  const a = Math.atan2(y2 - y1, x2 - x1), L = 18, p = g => `${x2 - L * Math.cos(a + g)},${y2 - L * Math.sin(a + g)}`;
+  return `<line x1="${x1}" y1="${y1}" x2="${x2 - 10 * Math.cos(a)}" y2="${y2 - 10 * Math.sin(a)}" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/><polygon points="${x2},${y2} ${p(.45)} ${p(-.45)}" fill="${color}"/>`;
+}
+
+/* ===== 剖面圖 ===== */
+function section(s, step, phase) {
+  const T = s.arc - 40;              // 海溝位置
+  const margin = 380;                // 歐亞大陸邊緣（大陸棚的盡頭）
+  let g = `<rect width="${W}" height="${SL}" fill="#e7f5ff"/><rect y="${SL}" width="${W}" height="${H - SL}" fill="#a5d8ff"/>` +
+    `<rect y="300" width="${W}" height="80" fill="#ffd8a8"/>` + label(70, 360, '地函', 'lbl sm');
+  // 歐亞板塊：大陸（左）→ 大陸棚（台灣海峽）→ 海洋地殼（南海）→ 在海溝往右下隱沒
+  g += `<path d="M0,${SL - 20} L170,${SL - 10} L190,${SL + 25} L${margin},${SL + 35} L${margin + 40},${SL + 95} L${T},${SL + 100}
+        L${T + 320},${H + 40} L${T + 270},${H + 40} L${T - 20},${SL + 140} L${margin + 30},${SL + 135} L${margin - 20},${SL + 120} L0,${SL + 120}Z"
+        fill="var(--eura)" stroke="#7f5539" stroke-width="2"/>`;
+  g += `<path d="M${margin + 40},${SL + 95} L${T},${SL + 100} L${T + 320},${H + 40} L${T + 270},${H + 40} L${T - 20},${SL + 140} L${margin + 30},${SL + 135}Z" fill="var(--euraOcean)"/>`;
+  // 菲律賓海板塊（右），前緣在海溝
+  g += `<path d="M${T},${SL + 100} Q${T + 40},${SL + 72} ${T + 90},${SL + 70} L${W},${SL + 70} L${W},${SL + 110} L${T + 110},${SL + 110} Q${T + 50},${SL + 112} ${T + 20},${SL + 140}Z" fill="var(--psp)" stroke="var(--pspDark)" stroke-width="2"/>`;
+  // 呂宋島弧（火山島）：在菲律賓海板塊上，靠近海溝
+  const vx = T + 120, vh = 100 * s.volc;
+  if (vh > 1) {
+    g += `<path d="M${vx - 70},${SL + 72} L${vx},${SL + 70 - vh} L${vx + 70},${SL + 72}Z" fill="#8d6e63" stroke="#5d4037" stroke-width="2"/>` +
+      `<path d="M${vx + 60},${SL + 72} L${vx + 110},${SL + 70 - vh * 0.65} L${vx + 160},${SL + 72}Z" fill="#a1887f" stroke="#5d4037" stroke-width="2"/>`;
+  }
+  // 第 1 步：岩漿從隱沒板塊上升
+  if (step === 0 && phase < 1) {
+    const my = lerp(330, SL + 60, phase);
+    g += `<circle cx="${vx}" cy="${my}" r="16" fill="var(--magma)"/><line x1="${vx}" y1="${my}" x2="${vx}" y2="330" stroke="var(--magma)" stroke-width="6" opacity=".6"/>`;
+  }
+  // 台灣：碰撞處被擠高的岩層（褶皺），左邊接大陸棚、右邊接島弧
+  const mh = 150 * s.mtn;
+  if (mh > 1) {
+    // 山頂高度 peak；二次曲線控制點 c 讓曲線最高點剛好在 peak
+    const L = margin - 70, R = vx - 30, peak = SL + 40 - 0.87 * mh, c = (4 * peak - 2 * SL - 95) / 2;
+    g += `<path d="M${L},${SL + 35} Q${(L + R) / 2 - 20},${c} ${R},${SL + 60} L${R},${SL + 120} Q${(L + R) / 2},${SL + 150 + mh * 0.3} ${L},${SL + 125}Z" fill="#b08968" stroke="#7f5539" stroke-width="2"/>`;
+    for (let i = 1; i <= 3; i++) {
+      const k = i / 4;
+      g += `<path d="M${L + 10},${SL + 35 + 85 * k} Q${(L + R) / 2 - 20},${c + 160 * k} ${R - 5},${SL + 60 + 55 * k}" fill="none" stroke="${['#e9c46a', '#f4a261', '#d4a373'][i - 1]}" stroke-width="5"/>`;
+    }
+    if (step >= 3 && mh > 60) g += label((L + R) / 2 - 15, peak + 45, '中央山脈');
+  }
+  // 板塊移動箭頭
+  g += arrow(Math.min(W - 60, T + 380), 40, Math.min(W - 60, T + 380) - 130, 40, 'var(--pspDark)');
+  // 地震
+  if (s.quake > 0.5) [[margin + 20, SL + 80], [T + 30, SL + 150], [T + 80, 260], [margin - 40, SL + 110]].forEach(([x, y], i) => {
+    if ((Math.floor(performance.now() / 300) + i) % 2) g += `<text x="${x}" y="${y}" font-size="30" fill="#fab005" text-anchor="middle">✸</text>`;
+  });
+
+  // 文字標示（依步驟出現）
+  g += label(90, SL - 35, '歐亞大陸') + label(Math.min(W - 120, T + 330), SL + 100, '菲律賓海板塊') + label(Math.min(W - 120, T + 330), 25, '往西北移動', 'lbl sm');
+  if (step <= 1) g += label((margin + T) / 2 + 20, SL + 125, '南海（海洋地殼）', 'lbl sm') + label(T + 150, 280, '隱沒', 'lbl sm');
+  g += label(margin - 100, SL + 80, '歐亞板塊', 'lbl sm');
+  if (vh > 1 && step <= 2) g += label(vx + 40, SL - vh - 10, '呂宋島弧（火山島）');
+  if (step <= 1) g += label(280, SL + 18, '大陸棚', 'lbl sm');
+  if (step === 2 && phase > 0.5) g += label((margin + vx) / 2 - 10, 40, '碰撞！', 'lbl big');
+  if (step >= 3 && mh > 60) {
+    g += label(vx + 40, SL - vh - 10, '海岸山脈') +
+      `<line x1="${vx - 30}" y1="${SL - 8}" x2="${vx - 30}" y2="${SL + 120}" stroke="#c92a2a" stroke-width="3" stroke-dasharray="8 6"/>` +
+      label(vx - 30, SL + 155, '花東縱谷（板塊交界）', 'lbl sm') + label(200, SL + 18, '台灣海峽', 'lbl sm');
+  }
+  if (step === 4) g += label(680, 360, '台灣還在長高、地震頻繁', 'lbl big');
+  return g;
+}
+
+/* ===== 俯視示意圖 ===== */
+function map(s) {
+  const bx = lerp(118, 230, (s.arc - 426) / (760 - 426)); // 板塊交界（海溝）的位置
+  let g = `<rect width="260" height="300" fill="#a5d8ff"/>` +
+    `<path d="M0,0 L170,0 Q150,40 120,70 Q95,100 80,150 Q60,210 20,260 L0,300Z" fill="var(--eura)"/>` + label(55, 60, '中國大陸', 'lbl sm') +
+    `<path d="M${bx},0 L${bx + 20},300 L260,300 L260,0Z" fill="var(--psp)" opacity=".35"/>` +
+    `<line x1="${bx}" y1="0" x2="${bx + 20}" y2="300" stroke="var(--pspDark)" stroke-width="3" stroke-dasharray="8 5"/>` +
+    label(205, 285, '菲律賓海板塊', 'lbl sm') + label(60, 285, '歐亞板塊', 'lbl sm');
+  // 呂宋島弧：一串火山島
+  if (s.volc > 0.05) for (let i = 0; i < 5; i++) {
+    const y = 130 + i * 32, x = bx + 18 + i * 2.5;
+    g += `<circle cx="${x}" cy="${y}" r="${5 * s.volc}" fill="#8d6e63"/>`;
+  }
+  if (s.volc > 0.5) g += label(bx + 45, 120, '呂宋島弧', 'lbl sm');
+  // 台灣島
+  if (s.mtn > 0.05) g += `<ellipse cx="128" cy="115" rx="${15 * Math.min(1, s.mtn)}" ry="${42 * Math.min(1, s.mtn)}" transform="rotate(18 128 115)" fill="#69db7c" stroke="#2b8a3e" stroke-width="2"/>` +
+    (s.mtn > 0.3 ? label(128, 70, '台灣', 'lbl') : '');
+  g += arrow(235, 230, 200, 195, 'var(--pspDark)', 5);
+  return g;
+}
+
+/* ===== 步驟控制與動畫 ===== */
+const $ = id => document.getElementById(id);
+let step = 0, phase = 0, anim = 0, quakeTimer = 0;
+const from = i => i === 0 ? START : STEPS[i - 1].k;
+function stateAt(i, p) {
+  const a = from(i), b = STEPS[i].k, e = ease(p), o = {};
+  for (const k in b) o[k] = lerp(a[k], b[k], e);
+  o.quake = b.quake; // 地震不漸變
+  return o;
+}
+function draw() {
+  const s = stateAt(step, phase);
+  $('sec').innerHTML = `<clipPath id="c"><rect width="${W}" height="${H}"/></clipPath><g clip-path="url(#c)">${section(s, step, phase)}</g>`;
+  $('map').innerHTML = map(s);
+}
+function go(i) {
+  step = i; phase = 0;
+  const st = STEPS[i];
+  $('when').textContent = `第 ${i + 1} 步・${st.when}`;
+  $('stitle').textContent = st.title;
+  $('desc').textContent = st.desc;
+  document.querySelectorAll('#steps button').forEach((b, j) => { b.classList.toggle('on', j === i); b.classList.toggle('done', j < i); });
+  $('prev').disabled = i === 0; $('next').disabled = i === STEPS.length - 1;
+  cancelAnimationFrame(anim);
+  const t0 = performance.now(), DUR = 2600;
+  const tick = now => {
+    phase = Math.min(1, (now - t0) / DUR); draw();
+    if (phase < 1 || STEPS[step].k.quake) anim = requestAnimationFrame(tick); // 最後一步持續閃爍地震
+  };
+  anim = requestAnimationFrame(tick);
+}
+$('steps').innerHTML = STEPS.map((s, i) => `<button><b>步驟 ${i + 1}</b>${s.name}</button>`).join('');
+document.querySelectorAll('#steps button').forEach((b, i) => b.onclick = () => go(i));
+$('prev').onclick = () => go(Math.max(0, step - 1));
+$('next').onclick = () => go(Math.min(STEPS.length - 1, step + 1));
+$('again').onclick = () => go(step);
+go(0);
+</script>
+</body>
+</html>
