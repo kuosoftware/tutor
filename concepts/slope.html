@@ -61,25 +61,32 @@
 
 <script>
 /* ===== 步驟：每一步一組畫面參數，按下去從上一步動畫過去 =====
+   fold：褶皺程度；erode：風化侵蝕程度；close：0＝大範圍剖面、1＝放大到一座山
    theta：岩層傾斜角度；dig：挖除坡腳程度；slide：順向坡滑動程度；rain：下雨與地震；case／verdict：顯示案例、結論 */
 const STEPS = [
-  { name: '認識兩種坡', title: '岩層傾斜，山的兩側就不一樣',
-    desc: '這座山的岩層往右下傾斜。右側山坡的坡面和岩層往同一個方向傾斜，叫「順向坡」；左側山坡的岩層斜斜插進山裡，和坡面方向相反，叫「逆向坡」。',
-    k: { theta: 22, dig: 0, slide: 0, rain: 0, case: 0, verdict: 0 } },
+  { name: '擠壓形成褶皺', title: '水平的岩層受到擠壓，彎曲成褶皺',
+    desc: '沉積岩一層一層水平堆積。板塊擠壓時，岩層彎曲成波浪狀：向上拱起的是「背斜」，向下凹的是「向斜」。背斜和向斜之間的部分（翼部），岩層是傾斜的。',
+    k: { fold: 1, erode: 0, close: 0, theta: 22, dig: 0, slide: 0, rain: 0, case: 0, verdict: 0 } },
+  { name: '風化侵蝕', title: '經過長時間的風化與侵蝕，切出山和谷',
+    desc: '地表的岩層經過長時間風化、被河流侵蝕，削出一座座山坡。山坡切過傾斜的岩層，山坡的方向和岩層的方向就有了「同向」或「反向」的差別。我們放大框起來的這一段來看。',
+    k: { fold: 1, erode: 1, close: 0, theta: 22, dig: 0, slide: 0, rain: 0, case: 0, verdict: 0 } },
+  { name: '認識兩種坡', title: '放大一座山：兩側的坡不一樣',
+    desc: '這座山位在褶皺的翼部，岩層往右下傾斜。右側山坡的坡面和岩層往同一個方向傾斜，叫「順向坡」；左側山坡的岩層斜斜插進山裡，和坡面方向相反，叫「逆向坡」。',
+    k: { fold: 1, erode: 1, close: 1, theta: 22, dig: 0, slide: 0, rain: 0, case: 0, verdict: 0 } },
   { name: '挖除坡腳', title: '為了多一點建地，挖掉坡腳、蓋擋土牆',
     desc: '在山腳挖掉一塊、蓋擋土牆，房子就能靠近山邊。但在順向坡，坡腳一挖，傾斜的岩層就被切斷、露出來，上面的岩層失去下方的支撐。',
-    k: { theta: 22, dig: 1, slide: 0, rain: 0, case: 0, verdict: 0 } },
+    k: { fold: 1, erode: 1, close: 1, theta: 22, dig: 1, slide: 0, rain: 0, case: 0, verdict: 0 } },
   { name: '豪雨・地震', title: '豪雨或地震來了',
     desc: '雨水滲進岩層之間，岩層面變得更滑；再加上地震搖晃，順向坡上方整片岩層沿著岩層面往下滑，推倒擋土牆、衝向房子。逆向坡的岩層插在山裡，頂多掉一些落石。',
-    k: { theta: 22, dig: 1, slide: 1, rain: 1, case: 0, verdict: 0 } },
+    k: { fold: 1, erode: 1, close: 1, theta: 22, dig: 1, slide: 1, rain: 1, case: 0, verdict: 0 } },
   { name: '真實案例', title: '1997 年 汐止林肯大郡',
     desc: '社區旁的山坡是順向坡，興建時挖除了坡腳，擋土牆施工也不良。溫妮颱風帶來豪雨，造成地層滑動，土石衝毀大樓，造成 28 人死亡。',
-    k: { theta: 22, dig: 1, slide: 1, rain: 0, case: 1, verdict: 0 } },
+    k: { fold: 1, erode: 1, close: 1, theta: 22, dig: 1, slide: 1, rain: 0, case: 1, verdict: 0 } },
   { name: '結論', title: '如果一定要在山坡地蓋房子……',
     desc: '最好不要在陡峭的山坡地蓋房子。如果一定要，逆向坡相對安全；千萬不要挖除坡腳。買房子前，先了解基地附近的地質環境。',
-    k: { theta: 22, dig: 1, slide: 1, rain: 0, case: 0, verdict: 1 } },
+    k: { fold: 1, erode: 1, close: 1, theta: 22, dig: 1, slide: 1, rain: 0, case: 0, verdict: 1 } },
 ];
-const START = { theta: 0, dig: 0, slide: 0, rain: 0, case: 0, verdict: 0 };
+const START = { fold: 0, erode: 0, close: 0, theta: 22, dig: 0, slide: 0, rain: 0, case: 0, verdict: 0 };
 
 /* ===== 小工具（沿用台灣的形成頁） ===== */
 const W = 1000, H = 380, GY = 330; // GY：地面高度
@@ -104,7 +111,31 @@ function house(x, tilt = 0, crushed = 0) {
     `<rect x="${x - 8}" y="${GY - 22 * (1 - 0.5 * crushed)}" width="16" height="${22 * (1 - 0.5 * crushed)}" fill="#868e96"/></g>`;
 }
 
-/* ===== 畫面 ===== */
+/* ===== 大範圍剖面：水平岩層 → 褶皺（背斜、向斜）→ 風化侵蝕切出山坡 ===== */
+const ZOOM = [435, 240]; // 放大的那一段（褶皺翼部上的一座山）
+function wide(s, step) {
+  const xs = []; for (let x = 0; x <= W; x += 10) xs.push(x);
+  const fold = x => s.fold * 55 * Math.cos(2 * Math.PI * (x - 250) / 700); // 背斜在 x=250、向斜在 x=600
+  const layer = (i, x) => 110 + i * 36 - fold(x);
+  const eroded = x => 205 - 32 * Math.sin(2 * Math.PI * (x - 60) / 300);   // 侵蝕後的地表（山頂在 x=135、435、735）
+  const surf = x => lerp(layer(0, x), eroded(x), s.erode);
+  let g = `<clipPath id="ground"><polygon points="${xs.map(x => `${x},${surf(x)}`).join(' ')} ${W},${H} 0,${H}"/></clipPath><g clip-path="url(#ground)">`;
+  for (let i = 0; i < 8; i++) {
+    const top = xs.map(x => `${x},${layer(i, x)}`), bot = xs.map(x => `${x},${layer(i + 1, x)}`).reverse();
+    g += `<polygon points="${top.join(' ')} ${bot.join(' ')}" fill="${STRIPE[i % 4]}" stroke="#7f5539" stroke-width="1"/>`;
+  }
+  g += '</g>';
+  g += `<polyline points="${xs.map(x => `${x},${surf(x)}`).join(' ')}" fill="none" stroke="#2b8a3e" stroke-width="3"/>`;
+  if (s.erode > 0.05) g += `<polyline points="${xs.map(x => `${x},${layer(0, x)}`).join(' ')}" fill="none" stroke="#868e96" stroke-width="2" stroke-dasharray="6 6" opacity="${s.erode}"/>` +
+    label(820, 95, '被侵蝕掉的部分', 'lbl sm');
+  if (step === 0) g += arrow(10, 250, 80, 250) + arrow(990, 250, 920, 250) + label(45, 230, '擠壓', 'lbl sm') + label(955, 230, '擠壓', 'lbl sm');
+  if (s.fold > 0.5) g += label(250, 30, '背斜') + label(600, 30, '向斜') + label(425, 60, '翼部（岩層傾斜）', 'lbl sm') +
+    `<line x1="250" y1="38" x2="250" y2="${layer(0, 250) - 6}" stroke="#495057" stroke-dasharray="3 4"/><line x1="600" y1="38" x2="600" y2="${layer(0, 600) - 6}" stroke="#495057" stroke-dasharray="3 4"/>`;
+  if (step === 1 && s.erode > 0.8) g += `<rect x="${ZOOM[0] - 100}" y="140" width="200" height="200" rx="8" fill="none" stroke="#2f6fed" stroke-width="4" stroke-dasharray="10 6"/>` + label(ZOOM[0], 132, '放大這一段 ↓', 'lbl');
+  return g;
+}
+
+/* ===== 放大後的一座山 ===== */
 function scene(s, step, phase) {
   const t = Math.tan(s.theta * Math.PI / 180);
   // 山的輪廓：左山腳 (100,330) → 山頂 (500,90) → 右山腳 (900,330)，坡度 0.6；dig 越大坡腳挖越多
@@ -117,7 +148,7 @@ function scene(s, step, phase) {
   const sl = ease(s.slide), dist = 150 * sl, bx = dist * Math.cos(s.theta * Math.PI / 180), by = dist * t * Math.cos(s.theta * Math.PI / 180);
 
   // 地震搖晃（第 3 步動畫進行中）
-  const shake = step === 2 && phase < 1 ? Math.sin(phase * 90) * 4 * (1 - phase) : 0;
+  const shake = step === 4 && phase < 1 ? Math.sin(phase * 90) * 4 * (1 - phase) : 0;
   let g = `<rect width="${W}" height="${H}" fill="var(--sky)"/><g transform="translate(${shake},0)">`;
   g += `<clipPath id="hill"><polygon points="${hill}"/></clipPath><g clip-path="url(#hill)">${strata(s.theta)}</g>` +
     `<polygon points="${hill}" fill="none" stroke="#5f3dc4" stroke-width="0" />` +
@@ -136,14 +167,14 @@ function scene(s, step, phase) {
     g += `<g opacity="${s.dig}">${house(150)}${house(860, 28 * Math.max(0, (sl - 0.55) / 0.45), Math.max(0, (sl - 0.6) / 0.4))}</g>`;
   }
   // 逆向坡只有少量落石
-  if (step >= 2 && s.slide > 0.05) [[0.2, 230, 270], [0.45, 222, 290], [0.7, 236, 310]].forEach(([d, x, y]) => {
+  if (step >= 4 && s.slide > 0.05) [[0.2, 230, 270], [0.45, 222, 290], [0.7, 236, 310]].forEach(([d, x, y]) => {
     const k = Math.min(1, Math.max(0, (sl - d) / 0.3));
     if (k > 0) g += `<circle cx="${x - 10 * k}" cy="${lerp(275, GY - 6, k)}" r="6" fill="#8d6e63"/>`;
   });
   g += '</g>';
 
   // 下雨
-  if (s.rain > 0.5 && step === 2) {
+  if (s.rain > 0.5 && step === 4) {
     const off = (performance.now() / 6) % 40;
     for (let i = 0; i < 70; i++) {
       const x = (i * 137) % W, y = ((i * 53) % 380 + off * 4) % 380;
@@ -155,13 +186,13 @@ function scene(s, step, phase) {
   if (s.theta > 5) {
     g += label(780, 150, '順向坡') + label(800, 172, '岩層和坡面同方向', 'lbl sm') +
       label(225, 150, '逆向坡') + label(205, 172, '岩層和坡面反方向', 'lbl sm');
-    if (step === 0) {
+    if (step === 2) {
       g += arrow(560, 70, 680, 70 + 120 * t, '#7f5539') + label(560, 55, '岩層傾斜方向', 'lbl sm') +
         arrow(620, 128, 720, 188, '#2b8a3e') + arrow(380, 128, 280, 188, '#2b8a3e') + label(400, 210, '坡面往下的方向', 'lbl sm');
     }
   }
-  if (step === 1 && phase > 0.6) g += label(850, 225, '岩層被切斷，', 'lbl sm red') + label(850, 245, '失去支撐！', 'lbl sm red') + label(150, 245, '擋土牆', 'lbl sm');
-  if (step === 2 && phase > 0.5) g += label(690, 40, '整片岩層沿岩層面滑下來！', 'lbl big red') + label(215, 40, '只有少量落石', 'lbl sm');
+  if (step === 3 && phase > 0.6) g += label(850, 225, '岩層被切斷，', 'lbl sm red') + label(850, 245, '失去支撐！', 'lbl sm red') + label(150, 245, '擋土牆', 'lbl sm');
+  if (step === 4 && phase > 0.5) g += label(690, 40, '整片岩層沿岩層面滑下來！', 'lbl big red') + label(215, 40, '只有少量落石', 'lbl sm');
   if (s.case > 0.5) g += `<rect x="620" y="20" width="360" height="70" rx="10" fill="#fff" stroke="#c92a2a" stroke-width="2"/>` +
     label(800, 50, '林肯大郡（1997・汐止）', 'lbl red') + label(800, 76, '順向坡＋挖除坡腳＋豪雨 → 地層滑動', 'lbl sm');
   if (s.verdict > 0.5) g += label(150, 250, '✔ 相對安全', 'lbl big green') + label(870, 230, '✖ 危險', 'lbl big red') +
@@ -180,7 +211,13 @@ function stateAt(i, p) {
   return o;
 }
 function draw() {
-  $('svg').innerHTML = `<clipPath id="all"><rect width="${W}" height="${H}"/></clipPath><g clip-path="url(#all)">${scene(stateAt(step, phase), step, phase)}</g>`;
+  const s = stateAt(step, phase);
+  // 第 2→3 步：大範圍剖面放大到框起來的那座山，再淡入放大圖
+  const z = 1 + 4 * s.close, cx = lerp(ZOOM[0], 500, s.close), cy = lerp(ZOOM[1], 250, s.close);
+  let g = `<rect width="${W}" height="${H}" fill="var(--sky)"/>`;
+  if (s.close < 0.999) g += `<g opacity="${1 - s.close}" transform="translate(${cx},${cy}) scale(${z}) translate(${-ZOOM[0]},${-ZOOM[1]})">${wide(s, step)}</g>`;
+  if (s.close > 0.001) g += `<g opacity="${s.close}">${scene(s, step, phase)}</g>`;
+  $('svg').innerHTML = `<clipPath id="all"><rect width="${W}" height="${H}"/></clipPath><g clip-path="url(#all)">${g}</g>`;
 }
 function go(i) {
   step = i; phase = 0;
@@ -192,7 +229,7 @@ function go(i) {
   document.querySelectorAll('#steps button').forEach((b, j) => { b.classList.toggle('on', j === i); b.classList.toggle('done', j < i); });
   $('prev').disabled = i === 0; $('next').disabled = i === STEPS.length - 1;
   cancelAnimationFrame(anim);
-  const t0 = performance.now(), DUR = i === 2 ? 3200 : 2400;
+  const t0 = performance.now(), DUR = i === 4 ? 3200 : 2400;
   const tick = now => {
     phase = Math.min(1, (now - t0) / DUR); draw();
     if (phase < 1) anim = requestAnimationFrame(tick);
