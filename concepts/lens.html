@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>透鏡成像</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #1f2430; --muted: #6b7280; --line: #e5e7eb;
+    --primary: #2f6fed; --primary-soft: #e8f0ff; --radius: 14px;
+    --r1: #e8590c; --r2: #2b8a3e; --r3: #1971c2; --img: #9c36b5; --obj: #1f2430; --lens: #74c0fc;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--text); line-height: 1.5;
+    font-family: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--line); }
+  header a { color: var(--primary); text-decoration: none; font-size: 15px; }
+  header h1 { font-size: 20px; margin: 0; flex: 1; }
+  .seg { display: inline-flex; background: #eef0f4; border-radius: 10px; padding: 3px; }
+  .seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 8px; font: inherit; font-size: 14px; color: var(--muted); cursor: pointer; }
+  .seg button.on { background: #fff; color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 10px 16px 24px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; color: var(--muted); margin: 2px 0 8px; }
+  .legend i { display: inline-block; width: 22px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: 4px; }
+  .legend .dash { border-top-style: dashed; border-color: var(--muted); }
+
+  .panel { background: var(--card); border-radius: var(--radius); padding: 8px 14px 10px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .cap { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+  .cap b { font-size: 17px; }
+  .cap .res { font-size: 16px; font-weight: 600; color: var(--img); }
+  .cap .pos { font-size: 14px; color: var(--muted); }
+  .cap .app { font-size: 13px; background: var(--primary-soft); color: var(--primary); padding: 0 8px; border-radius: 99px; }
+  svg { display: block; width: 100%; height: auto; max-height: calc((100vh - 350px) / 2); min-height: 150px; margin: 0 auto; }
+  .single svg { max-height: calc(100vh - 240px); }
+  .hide { display: none !important; }
+
+  /* 每張圖自己的卷軸：平板手指好拖 */
+  .readout { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 15px; }
+  .readout .zone { font-weight: 600; }
+  .readout .uval { color: var(--muted); font-size: 14px; margin-left: auto; }
+  .jump { display: inline-flex; gap: 6px; }
+  .jump button { border: 1px solid var(--line); background: #fff; border-radius: 6px; font: inherit; font-size: 13px; padding: 0 10px; color: var(--muted); cursor: pointer; }
+  input[type=range] { width: 100%; height: 40px; margin: 0; accent-color: var(--primary); cursor: pointer; direction: rtl; }
+
+  /* SVG 樣式 */
+  .axis { stroke: #adb5bd; stroke-width: 1.5; }
+  .tick { stroke: #868e96; stroke-width: 2; }
+  .lbl { font-size: 18px; fill: #495057; text-anchor: middle; font-family: inherit; }
+  .ray { stroke-width: 2.5; fill: none; }
+  .ext { stroke-width: 2; stroke-dasharray: 7 6; fill: none; opacity: .75; }
+  .r1 { stroke: var(--r1); } .r2 { stroke: var(--r2); } .r3 { stroke: var(--r3); }
+  .handle { fill: transparent; cursor: grab; touch-action: none; }
+  .handle:active { cursor: grabbing; }
+</style>
+</head>
+<body>
+<header>
+  <a href="./">‹ 觀念目錄</a>
+  <h1>透鏡成像</h1>
+  <div class="seg" id="mode">
+    <button data-m="both" class="on">兩個都看</button>
+    <button data-m="convex">只看凸透鏡</button>
+    <button data-m="concave">只看凹透鏡</button>
+  </div>
+</header>
+
+<main id="main">
+  <div class="legend">
+    <span><i style="border-color:var(--r1)"></i>① 平行主軸入射</span>
+    <span><i style="border-color:var(--r2)"></i>② 射向光心</span>
+    <span><i style="border-color:var(--r3)"></i>③ 射向焦點</span>
+    <span><i class="dash"></i>反向延長線</span>
+    <span style="color:var(--img)">▲ 像（虛線箭頭＝虛像）</span>
+  </div>
+  <!-- 兩張圖結構相同，由程式依 data-type 畫出 -->
+  <section class="panel" data-type="convex">
+    <div class="cap"><b>凸透鏡</b><span class="res"></span><span class="pos"></span><span class="app"></span></div>
+    <svg viewBox="0 0 1000 300" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="readout"><span class="zone"></span><span class="jump">跳到 <button data-u="2">2F</button><button data-u="1">F</button></span><span class="uval"></span></div>
+    <input type="range" min="0.3" max="4" step="0.01" value="2.6" aria-label="凸透鏡的物體位置">
+  </section>
+  <section class="panel" data-type="concave">
+    <div class="cap"><b>凹透鏡</b><span class="res"></span><span class="pos"></span><span class="app"></span></div>
+    <svg viewBox="0 0 1000 300" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="readout"><span class="zone"></span><span class="jump">跳到 <button data-u="2">2F</button><button data-u="1">F</button></span><span class="uval"></span></div>
+    <input type="range" min="0.3" max="4" step="0.01" value="2.6" aria-label="凹透鏡的物體位置">
+  </section>
+</main>
+
+<script>
+/* ===== 光學圖設定（SVG 座標） ===== */
+const W = 1000, LX = 500, AY = 150, F = 110, OH = 60; // 透鏡位置、主軸高度、焦距、物體高度
+const U_MIN = 0.3, U_MAX = 4;
+
+/* ===== 畫圖小工具 ===== */
+const seg = (x1, y1, x2, y2, cls) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${cls}"/>`;
+// 從 (x1,y1) 經過 (x2,y2) 延伸到 x = xt
+const extendTo = (x1, y1, x2, y2, xt) => [xt, y1 + (y2 - y1) * (xt - x1) / (x2 - x1)];
+function arrow(x, yTip, color, dashed) {
+  const up = yTip < AY, h = 12;
+  const head = `${x},${yTip} ${x - 9},${yTip + (up ? h : -h)} ${x + 9},${yTip + (up ? h : -h)}`;
+  return `<line x1="${x}" y1="${AY}" x2="${x}" y2="${yTip}" stroke="${color}" stroke-width="4" ${dashed ? 'stroke-dasharray="8 6"' : ''}/>` +
+    `<polygon points="${head}" fill="${dashed ? '#fff' : color}" stroke="${color}" stroke-width="2"/>`;
+}
+function base(type) {
+  let s = seg(0, AY, W, AY, 'axis');
+  // F、2F 刻度（兩側）
+  [-2, -1, 1, 2].forEach(k => {
+    const x = LX + k * F;
+    s += seg(x, AY - 7, x, AY + 7, 'tick') + `<text x="${x}" y="${AY + 30}" class="lbl">${Math.abs(k) === 2 ? '2F' : 'F'}</text>`;
+  });
+  // 透鏡
+  const T = AY - 125, B = AY + 125;
+  s += type === 'convex'
+    ? `<path d="M${LX},${T} Q${LX + 34},${AY} ${LX},${B} Q${LX - 34},${AY} ${LX},${T}Z" fill="var(--lens)" fill-opacity=".35" stroke="var(--lens)" stroke-width="2"/>`
+    : `<path d="M${LX - 16},${T} L${LX + 16},${T} Q${LX + 3},${AY} ${LX + 16},${B} L${LX - 16},${B} Q${LX - 3},${AY} ${LX - 16},${T}Z" fill="var(--lens)" fill-opacity=".35" stroke="var(--lens)" stroke-width="2"/>`;
+  s += `<circle cx="${LX}" cy="${AY}" r="3.5" fill="#495057"/>`;
+  return s;
+}
+
+/* ===== 成像計算：1/u + 1/v = 1/f（凸 f=1、凹 f=-1，以 F 為單位） ===== */
+function image(type, u) {
+  const f = type === 'convex' ? 1 : -1;
+  if (type === 'convex' && u === 1) return null; // 物在焦點：不成像
+  const v = u * f / (u - f), m = -v / u;
+  return { v, m, x: LX + v * F, y: AY - m * OH, real: v > 0 };
+}
+
+/* ===== 三條主要光線 ===== */
+function rays(type, u, img) {
+  const ox = LX - u * F, oy = AY - OH, far = W + 200;
+  const Fl = [LX - F, AY], Fr = [LX + F, AY];
+  let s = '';
+  if (type === 'convex') {
+    // ① 平行主軸 → 折射後通過右側焦點
+    s += seg(ox, oy, LX, oy, 'ray r1') + seg(LX, oy, ...extendTo(LX, oy, ...Fr, far), 'ray r1');
+    if (img && !img.real) s += seg(LX, oy, img.x, img.y, 'ext r1');
+    // ② 射向光心 → 直線前進
+    s += seg(ox, oy, ...extendTo(ox, oy, LX, AY, far), 'ray r2');
+    if (img && !img.real) s += seg(ox, oy, img.x, img.y, 'ext r2');
+    // ③ 通過左側焦點 → 折射後平行主軸
+    if (u !== 1) {
+      const y3 = AY - OH / (1 - u);
+      if (u < 1) s += seg(...Fl, ox, oy, 'ext r3'); // 物在焦點內：光線看起來從焦點出發
+      s += seg(ox, oy, LX, y3, 'ray r3') + seg(LX, y3, far, y3, 'ray r3');
+      if (img && !img.real) s += seg(LX, y3, img.x, img.y, 'ext r3');
+    }
+  } else {
+    // ① 平行主軸 → 折射後發散，反向延長線通過左側焦點
+    s += seg(ox, oy, LX, oy, 'ray r1') + seg(LX, oy, ...extendTo(...Fl, LX, oy, far), 'ray r1') + seg(LX, oy, ...Fl, 'ext r1');
+    // ② 射向光心 → 直線前進
+    s += seg(ox, oy, ...extendTo(ox, oy, LX, AY, far), 'ray r2');
+    // ③ 射向右側焦點 → 折射後平行主軸，反向延長線回到像
+    const y3 = AY - OH / (u + 1);
+    s += seg(ox, oy, LX, y3, 'ray r3') + seg(LX, y3, ...Fr, 'ext r3') + seg(LX, y3, far, y3, 'ray r3') + seg(LX, y3, img.x, img.y, 'ext r3');
+  }
+  return s;
+}
+
+/* ===== 文字說明 ===== */
+function describe(type, u, img) {
+  if (type === 'concave') return ['正立・縮小・虛像', '與物體同側，在 F 以內', '近視眼鏡'];
+  if (!img) return ['不成像', '折射後的光線互相平行', ''];
+  if (u > 2) return ['倒立・縮小・實像', '在透鏡另一側的 F～2F 之間', '照相機、眼睛'];
+  if (u === 2) return ['倒立・等大・實像', '在透鏡另一側的 2F 上', ''];
+  if (u > 1) return ['倒立・放大・實像', '在透鏡另一側的 2F 以外', '投影機'];
+  return ['正立・放大・虛像', '與物體同側', '放大鏡'];
+}
+function zoneText(u) {
+  if (u > 2) return '物體在 2F 以外';
+  if (u === 2) return '物體在 2F 上';
+  if (u > 1) return '物體在 F 與 2F 之間';
+  if (u === 1) return '物體在焦點 F 上';
+  return '物體在焦點 F 以內';
+}
+
+/* ===== 每張圖各自的狀態與卷軸 ===== */
+document.querySelectorAll('.panel').forEach(panel => {
+  const type = panel.dataset.type;
+  const svg = panel.querySelector('svg');
+  const slider = panel.querySelector('input[type=range]');
+  let u = +slider.value; // 物距，以焦距 F 為單位
+
+  function draw() {
+    const img = image(type, u), ox = LX - u * F;
+    let s = base(type) + rays(type, u, img) + arrow(ox, AY - OH, 'var(--obj)', false);
+    if (img) s += arrow(img.x, img.y, 'var(--img)', !img.real);
+    s += `<rect class="handle" data-drag x="${ox - 30}" y="${AY - OH - 30}" width="60" height="${OH + 50}"/>`; // 拖曳把手
+    // 只顯示 0～1000 × 0～300 的範圍，延伸到畫面外的光線裁掉
+    svg.innerHTML = `<clipPath id="clip-${type}"><rect width="${W}" height="300"/></clipPath><g clip-path="url(#clip-${type})">${s}</g>`;
+
+    let [res, pos, app] = describe(type, u, img);
+    if (img && (img.x > W || img.x < 0 || img.y < 0 || img.y > 300)) pos += '（像超出畫面）';
+    panel.querySelector('.res').textContent = res;
+    panel.querySelector('.pos').textContent = pos;
+    const a = panel.querySelector('.app');
+    a.textContent = app; a.classList.toggle('hide', !app);
+    panel.querySelector('.zone').textContent = zoneText(u);
+    panel.querySelector('.uval').textContent = `物距 = ${u.toFixed(2)} F`;
+  }
+
+  // 靠近 F、2F 時吸附
+  function setU(val) {
+    val = Math.min(U_MAX, Math.max(U_MIN, Math.round(val * 100) / 100));
+    for (const k of [1, 2]) if (Math.abs(val - k) < 0.05) val = k;
+    u = val; slider.value = val;
+    draw();
+  }
+  slider.addEventListener('input', () => setU(+slider.value));
+
+  // 卷軸是 rtl：往右拖，物體往右靠近透鏡；「跳到 2F／F」快速定位
+  panel.querySelectorAll('.jump button').forEach(b => b.onclick = () => setU(+b.dataset.u));
+
+  // 直接在圖上拖物體
+  let dragging = false;
+  svg.addEventListener('pointerdown', e => {
+    if (!e.target.hasAttribute('data-drag')) return;
+    dragging = true; svg.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    setU((LX - pt.matrixTransform(svg.getScreenCTM().inverse()).x) / F);
+  });
+  svg.addEventListener('pointerup', () => { dragging = false; });
+  svg.addEventListener('pointercancel', () => { dragging = false; });
+
+  panel.setU = setU; // 方便測試
+  draw();
+});
+
+// 兩個都看／只看一種
+document.querySelectorAll('#mode button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#mode button').forEach(x => x.classList.toggle('on', x === b));
+  const m = b.dataset.m;
+  document.querySelector('[data-type=convex]').classList.toggle('hide', m === 'concave');
+  document.querySelector('[data-type=concave]').classList.toggle('hide', m === 'convex');
+  document.getElementById('main').classList.toggle('single', m !== 'both');
+});
+</script>
+</body>
+</html>

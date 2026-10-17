@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>觀念目錄</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #1f2430; --muted: #6b7280; --line: #e5e7eb;
+    --primary: #2f6fed; --primary-soft: #e8f0ff; --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text); line-height: 1.5;
+    font-family: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 28px 16px 48px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  h2 { font-size: 18px; margin: 24px 0 10px; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .item {
+    display: block; background: var(--card); border-radius: var(--radius); padding: 18px;
+    text-decoration: none; color: inherit; box-shadow: 0 1px 2px rgba(0,0,0,.05);
+    border: 2px solid transparent;
+  }
+  .item:hover, .item:focus { border-color: var(--primary); outline: none; }
+  .item b { display: block; font-size: 18px; margin-bottom: 4px; }
+  .item span { color: var(--muted); font-size: 14px; }
+  .tag { display: inline-block; background: var(--primary-soft); color: var(--primary); font-size: 12px; padding: 1px 8px; border-radius: 99px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>觀念目錄</h1>
+  <p class="sub">點選觀念，進入互動說明頁</p>
+
+  <h2>理化</h2>
+  <div class="grid">
+    <!-- 新增觀念：複製一張 <a class="item"> 卡片 -->
+    <a class="item" href="lens.html">
+      <div class="tag">光學</div>
+      <b>透鏡成像</b>
+      <span>凸透鏡 vs 凹透鏡：拖動物體，看三條光線與成像</span>
+    </a>
+  </div>
+</div>
+</body>
+</html>
