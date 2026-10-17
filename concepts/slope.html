@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>順向坡與逆向坡</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #1f2430; --muted: #6b7280; --line: #e5e7eb;
+    --primary: #2f6fed; --primary-soft: #e8f0ff; --radius: 14px; --arrow: #c92a2a; --sky: #e7f5ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text); line-height: 1.5; font-family: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--line); }
+  header a { color: var(--primary); text-decoration: none; font-size: 15px; }
+  header h1 { font-size: 20px; margin: 0; }
+  main { max-width: 1100px; margin: 0 auto; padding: 10px 16px 24px; }
+  .card { background: var(--card); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .steps { display: flex; gap: 8px; flex-wrap: wrap; }
+  .steps button { flex: 1 1 140px; border: 2px solid var(--line); background: #fff; border-radius: 12px; padding: 8px 10px; font: inherit; font-size: 15px; cursor: pointer; text-align: left; color: var(--muted); }
+  .steps button b { display: block; font-size: 13px; color: var(--muted); }
+  .steps button.on { border-color: var(--primary); background: var(--primary-soft); color: var(--text); }
+  .steps button.on b { color: var(--primary); }
+  .steps button.done { color: var(--text); }
+  svg { display: block; width: 100%; height: auto; max-height: calc(100vh - 320px); min-height: 200px; }
+  .when { color: var(--primary); font-weight: 700; font-size: 14px; }
+  .stitle { font-size: 19px; font-weight: 700; margin: 0 0 2px; }
+  .desc { font-size: 16px; margin: 0; }
+  .nav { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .btn { border: 0; border-radius: 10px; padding: 8px 16px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; background: var(--primary); color: #fff; }
+  .btn.ghost { background: #eef0f4; color: var(--text); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .ref { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .lbl { font-size: 18px; fill: #343a40; text-anchor: middle; font-family: inherit; font-weight: 700; paint-order: stroke; stroke: rgba(255,255,255,.9); stroke-width: 4px; }
+  .sm { font-size: 15px; font-weight: 500; }
+  .big { font-size: 22px; }
+  .red { fill: #c92a2a; } .green { fill: #2b8a3e; }
+</style>
+</head>
+<body>
+<header>
+  <a href="./">‹ 觀念目錄</a>
+  <h1>順向坡與逆向坡</h1>
+</header>
+<main>
+  <div class="card"><div class="steps" id="steps"></div></div>
+  <div class="card">
+    <div class="when" id="when"></div>
+    <p class="stitle" id="stitle"></p>
+    <p class="desc" id="desc"></p>
+    <svg id="svg" viewBox="0 0 1000 380" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="nav">
+      <button class="btn ghost" id="prev">‹ 上一步</button>
+      <button class="btn ghost" id="again">↺ 重播這一步</button>
+      <button class="btn" id="next">下一步 ›</button>
+    </div>
+    <p class="ref" id="ref"></p>
+  </div>
+</main>
+
+<script>
+/* ===== 步驟：每一步一組畫面參數，按下去從上一步動畫過去 =====
+   theta：岩層傾斜角度；dig：挖除坡腳程度；slide：順向坡滑動程度；rain：下雨與地震；case／verdict：顯示案例、結論 */
+const STEPS = [
+  { name: '認識兩種坡', title: '岩層傾斜，山的兩側就不一樣',
+    desc: '這座山的岩層往右下傾斜。右側山坡的坡面和岩層往同一個方向傾斜，叫「順向坡」；左側山坡的岩層斜斜插進山裡，和坡面方向相反，叫「逆向坡」。',
+    k: { theta: 22, dig: 0, slide: 0, rain: 0, case: 0, verdict: 0 } },
+  { name: '挖除坡腳', title: '為了多一點建地，挖掉坡腳、蓋擋土牆',
+    desc: '在山腳挖掉一塊、蓋擋土牆，房子就能靠近山邊。但在順向坡，坡腳一挖，傾斜的岩層就被切斷、露出來，上面的岩層失去下方的支撐。',
+    k: { theta: 22, dig: 1, slide: 0, rain: 0, case: 0, verdict: 0 } },
+  { name: '豪雨・地震', title: '豪雨或地震來了',
+    desc: '雨水滲進岩層之間，岩層面變得更滑；再加上地震搖晃，順向坡上方整片岩層沿著岩層面往下滑，推倒擋土牆、衝向房子。逆向坡的岩層插在山裡，頂多掉一些落石。',
+    k: { theta: 22, dig: 1, slide: 1, rain: 1, case: 0, verdict: 0 } },
+  { name: '真實案例', title: '1997 年 汐止林肯大郡',
+    desc: '社區旁的山坡是順向坡，興建時挖除了坡腳，擋土牆施工也不良。溫妮颱風帶來豪雨，造成地層滑動，土石衝毀大樓，造成 28 人死亡。',
+    k: { theta: 22, dig: 1, slide: 1, rain: 0, case: 1, verdict: 0 } },
+  { name: '結論', title: '如果一定要在山坡地蓋房子……',
+    desc: '最好不要在陡峭的山坡地蓋房子。如果一定要，逆向坡相對安全；千萬不要挖除坡腳。買房子前，先了解基地附近的地質環境。',
+    k: { theta: 22, dig: 1, slide: 1, rain: 0, case: 0, verdict: 1 } },
+];
+const START = { theta: 0, dig: 0, slide: 0, rain: 0, case: 0, verdict: 0 };
+
+/* ===== 小工具（沿用台灣的形成頁） ===== */
+const W = 1000, H = 380, GY = 330; // GY：地面高度
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const label = (x, y, s, cls = 'lbl') => `<text x="${x}" y="${y}" class="${cls}">${s}</text>`;
+function arrow(x1, y1, x2, y2, color = 'var(--arrow)', w = 5) {
+  const a = Math.atan2(y2 - y1, x2 - x1), L = 16, p = g => `${x2 - L * Math.cos(a + g)},${y2 - L * Math.sin(a + g)}`;
+  return `<line x1="${x1}" y1="${y1}" x2="${x2 - 8 * Math.cos(a)}" y2="${y2 - 8 * Math.sin(a)}" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/><polygon points="${x2},${y2} ${p(.45)} ${p(-.45)}" fill="${color}"/>`;
+}
+const STRIPE = ['#e9c46a', '#d4a373', '#f4a261', '#b08968'];
+// 傾斜岩層：一組水平條紋整體旋轉 theta 度（往右下傾斜）
+function strata(theta, id) {
+  let s = `<g transform="rotate(${theta} 500 250)">`;
+  for (let i = -20; i < 30; i++) s += `<rect x="-600" y="${i * 26}" width="2200" height="26.5" fill="${STRIPE[(i + 40) % 4]}"/><line x1="-600" y1="${i * 26}" x2="1600" y2="${i * 26}" stroke="#7f5539" stroke-width="1"/>`;
+  return s + '</g>';
+}
+function house(x, tilt = 0, crushed = 0) {
+  const h = 45 * (1 - 0.5 * crushed);
+  return `<g transform="rotate(${tilt} ${x} ${GY})"><rect x="${x - 30}" y="${GY - h}" width="60" height="${h}" fill="#fff" stroke="#495057" stroke-width="2"/>` +
+    `<polygon points="${x - 38},${GY - h} ${x},${GY - h - 28} ${x + 38},${GY - h}" fill="#e03131" stroke="#495057" stroke-width="2"/>` +
+    `<rect x="${x - 8}" y="${GY - 22 * (1 - 0.5 * crushed)}" width="16" height="${22 * (1 - 0.5 * crushed)}" fill="#868e96"/></g>`;
+}
+
+/* ===== 畫面 ===== */
+function scene(s, step, phase) {
+  const t = Math.tan(s.theta * Math.PI / 180);
+  // 山的輪廓：左山腳 (100,330) → 山頂 (500,90) → 右山腳 (900,330)，坡度 0.6；dig 越大坡腳挖越多
+  const rx = lerp(900, 790, s.dig), ry = 90 + (rx - 500) * 0.6;
+  const lx = lerp(100, 210, s.dig), ly = GY - (lx - 100) * 0.6;
+  const hill = `0,${GY} ${lx},${GY} ${lx},${ly} 500,90 ${rx},${ry} ${rx},${GY} ${W},${GY} ${W},${H} 0,${H}`;
+  // 順向坡會滑動的岩塊：在坡腳切面露出的岩層面之上（B→C 沿岩層面，C→D 張裂縫，D→P 沿坡面）
+  const B = [790, 300], C = [600, 300 - 190 * t], D = [600, 150], P = [790, 264];
+  const block = `${C} ${D} ${P} ${B}`;
+  const sl = ease(s.slide), dist = 150 * sl, bx = dist * Math.cos(s.theta * Math.PI / 180), by = dist * t * Math.cos(s.theta * Math.PI / 180);
+
+  // 地震搖晃（第 3 步動畫進行中）
+  const shake = step === 2 && phase < 1 ? Math.sin(phase * 90) * 4 * (1 - phase) : 0;
+  let g = `<rect width="${W}" height="${H}" fill="var(--sky)"/><g transform="translate(${shake},0)">`;
+  g += `<clipPath id="hill"><polygon points="${hill}"/></clipPath><g clip-path="url(#hill)">${strata(s.theta)}</g>` +
+    `<polygon points="${hill}" fill="none" stroke="#5f3dc4" stroke-width="0" />` +
+    `<polyline points="0,${GY} ${lx},${GY} ${lx},${ly} 500,90 ${rx},${ry} ${rx},${GY} ${W},${GY}" fill="none" stroke="#2b8a3e" stroke-width="4"/>`;
+
+  if (s.slide > 0.001) {
+    // 滑走後留下的空缺與露出的滑動面
+    g += `<polygon points="${block}" fill="var(--sky)" stroke="var(--sky)" stroke-width="6"/><line x1="${C[0]}" y1="${C[1]}" x2="${B[0]}" y2="${B[1]}" stroke="#c92a2a" stroke-width="4" stroke-dasharray="10 6"/>`;
+    g += `<clipPath id="blk"><polygon points="${block}"/></clipPath><g transform="translate(${bx},${by})"><g clip-path="url(#blk)">${strata(s.theta)}</g><polygon points="${block}" fill="none" stroke="#7f5539" stroke-width="2"/></g>`;
+  }
+  // 擋土牆（順向坡那道會被推倒）＋房子
+  if (s.dig > 0.05) {
+    const fall = Math.min(1, sl * 1.6) * 75;
+    g += `<g transform="rotate(${fall} 792 ${GY})"><rect x="784" y="${lerp(GY, 262, s.dig)}" width="12" height="${GY - lerp(GY, 262, s.dig)}" fill="#868e96"/></g>` +
+      `<rect x="204" y="${lerp(GY, 262, s.dig)}" width="12" height="${GY - lerp(GY, 262, s.dig)}" fill="#868e96"/>`;
+    g += `<g opacity="${s.dig}">${house(150)}${house(860, 28 * Math.max(0, (sl - 0.55) / 0.45), Math.max(0, (sl - 0.6) / 0.4))}</g>`;
+  }
+  // 逆向坡只有少量落石
+  if (step >= 2 && s.slide > 0.05) [[0.2, 230, 270], [0.45, 222, 290], [0.7, 236, 310]].forEach(([d, x, y]) => {
+    const k = Math.min(1, Math.max(0, (sl - d) / 0.3));
+    if (k > 0) g += `<circle cx="${x - 10 * k}" cy="${lerp(275, GY - 6, k)}" r="6" fill="#8d6e63"/>`;
+  });
+  g += '</g>';
+
+  // 下雨
+  if (s.rain > 0.5 && step === 2) {
+    const off = (performance.now() / 6) % 40;
+    for (let i = 0; i < 70; i++) {
+      const x = (i * 137) % W, y = ((i * 53) % 380 + off * 4) % 380;
+      g += `<line x1="${x}" y1="${y}" x2="${x - 4}" y2="${y + 14}" stroke="#4dabf7" stroke-width="2" opacity=".7"/>`;
+    }
+  }
+
+  // 文字標示
+  if (s.theta > 5) {
+    g += label(780, 150, '順向坡') + label(800, 172, '岩層和坡面同方向', 'lbl sm') +
+      label(225, 150, '逆向坡') + label(205, 172, '岩層和坡面反方向', 'lbl sm');
+    if (step === 0) {
+      g += arrow(560, 70, 680, 70 + 120 * t, '#7f5539') + label(560, 55, '岩層傾斜方向', 'lbl sm') +
+        arrow(620, 128, 720, 188, '#2b8a3e') + arrow(380, 128, 280, 188, '#2b8a3e') + label(400, 210, '坡面往下的方向', 'lbl sm');
+    }
+  }
+  if (step === 1 && phase > 0.6) g += label(850, 225, '岩層被切斷，', 'lbl sm red') + label(850, 245, '失去支撐！', 'lbl sm red') + label(150, 245, '擋土牆', 'lbl sm');
+  if (step === 2 && phase > 0.5) g += label(690, 40, '整片岩層沿岩層面滑下來！', 'lbl big red') + label(215, 40, '只有少量落石', 'lbl sm');
+  if (s.case > 0.5) g += `<rect x="620" y="20" width="360" height="70" rx="10" fill="#fff" stroke="#c92a2a" stroke-width="2"/>` +
+    label(800, 50, '林肯大郡（1997・汐止）', 'lbl red') + label(800, 76, '順向坡＋挖除坡腳＋豪雨 → 地層滑動', 'lbl sm');
+  if (s.verdict > 0.5) g += label(150, 250, '✔ 相對安全', 'lbl big green') + label(870, 230, '✖ 危險', 'lbl big red') +
+    label(500, 30, '不要挖坡腳・買房前先看地質', 'lbl big');
+  return g;
+}
+
+/* ===== 步驟控制與動畫（同台灣的形成頁） ===== */
+const $ = id => document.getElementById(id);
+let step = 0, phase = 0, anim = 0;
+const from = i => i === 0 ? START : STEPS[i - 1].k;
+function stateAt(i, p) {
+  const a = from(i), b = STEPS[i].k, o = {};
+  for (const k in b) o[k] = k === 'slide' ? lerp(a[k], b[k], p) : lerp(a[k], b[k], ease(p)); // slide 在畫面裡自己做 ease
+  o.rain = b.rain; o.case = b.case; o.verdict = b.verdict;
+  return o;
+}
+function draw() {
+  $('svg').innerHTML = `<clipPath id="all"><rect width="${W}" height="${H}"/></clipPath><g clip-path="url(#all)">${scene(stateAt(step, phase), step, phase)}</g>`;
+}
+function go(i) {
+  step = i; phase = 0;
+  const st = STEPS[i];
+  $('when').textContent = `第 ${i + 1} 步`;
+  $('stitle').textContent = st.title;
+  $('desc').textContent = st.desc;
+  $('ref').textContent = i === STEPS.length - 1 ? '參考資料：國家地震工程研究中心〈若一定要在山坡地蓋房 應該選順向坡還是逆向坡？〉。圖為示意。' : '';
+  document.querySelectorAll('#steps button').forEach((b, j) => { b.classList.toggle('on', j === i); b.classList.toggle('done', j < i); });
+  $('prev').disabled = i === 0; $('next').disabled = i === STEPS.length - 1;
+  cancelAnimationFrame(anim);
+  const t0 = performance.now(), DUR = i === 2 ? 3200 : 2400;
+  const tick = now => {
+    phase = Math.min(1, (now - t0) / DUR); draw();
+    if (phase < 1) anim = requestAnimationFrame(tick);
+  };
+  anim = requestAnimationFrame(tick);
+}
+$('steps').innerHTML = STEPS.map((s, i) => `<button><b>步驟 ${i + 1}</b>${s.name}</button>`).join('');
+document.querySelectorAll('#steps button').forEach((b, i) => b.onclick = () => go(i));
+$('prev').onclick = () => go(Math.max(0, step - 1));
+$('next').onclick = () => go(Math.min(STEPS.length - 1, step + 1));
+$('again').onclick = () => go(step);
+go(0);
+</script>
+</body>
+</html>
