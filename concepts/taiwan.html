@@ -105,17 +105,23 @@ function arrow(x1, y1, x2, y2, color = 'var(--arrow)', w = 7) {
 function section(s, step, phase) {
   const T = s.arc - 40;              // 海溝位置
   const margin = 380;                // 歐亞大陸邊緣（大陸棚的盡頭）
+  const To = Math.max(T, margin + 50); // 南海海洋地殼幾乎隱沒完時，畫圖用的海溝位置不能跑到大陸邊緣左邊（否則形狀會交叉）
   let g = `<rect width="${W}" height="${SL}" fill="#e7f5ff"/><rect y="${SL}" width="${W}" height="${H - SL}" fill="#a5d8ff"/>` +
-    `<rect y="300" width="${W}" height="80" fill="#ffd8a8"/>` + label(70, 360, '地函', 'lbl sm');
+    `<rect y="${SL + 108}" width="${W}" height="${H - SL - 108}" fill="#ffd8a8"/>` + label(70, 360, "地函", "lbl sm"); // 地殼下方是地函（不是海水）
   // 歐亞板塊：大陸（左）→ 大陸棚（台灣海峽）→ 海洋地殼（南海）→ 在海溝往右下隱沒
-  g += `<path d="M0,${SL - 20} L170,${SL - 10} L190,${SL + 25} L${margin},${SL + 35} L${margin + 40},${SL + 95} L${T},${SL + 100}
-        L${T + 320},${H + 40} L${T + 270},${H + 40} L${T - 20},${SL + 140} L${margin + 30},${SL + 135} L${margin - 20},${SL + 120} L0,${SL + 120}Z"
+  g += `<path d="M0,${SL - 20} L170,${SL - 10} L190,${SL + 25} L${margin},${SL + 35} L${margin + 40},${SL + 95} L${To},${SL + 100}
+        L${To + 320},${H + 40} L${To + 270},${H + 40} L${To - 20},${SL + 140} L${margin + 30},${SL + 135} L${margin - 20},${SL + 120} L0,${SL + 120}Z"
         fill="var(--eura)" stroke="#7f5539" stroke-width="2"/>`;
-  g += `<path d="M${margin + 40},${SL + 95} L${T},${SL + 100} L${T + 320},${H + 40} L${T + 270},${H + 40} L${T - 20},${SL + 140} L${margin + 30},${SL + 135}Z" fill="var(--euraOcean)"/>`;
+  g += `<path d="M${margin + 40},${SL + 95} L${To},${SL + 100} L${To + 320},${H + 40} L${To + 270},${H + 40} L${To - 20},${SL + 140} L${margin + 30},${SL + 135}Z" fill="var(--euraOcean)"/>`;
   // 菲律賓海板塊（右），前緣在海溝
   g += `<path d="M${T},${SL + 100} Q${T + 40},${SL + 72} ${T + 90},${SL + 70} L${W},${SL + 70} L${W},${SL + 110} L${T + 110},${SL + 110} Q${T + 50},${SL + 112} ${T + 20},${SL + 140}Z" fill="var(--psp)" stroke="var(--pspDark)" stroke-width="2"/>`;
   // 呂宋島弧（火山島）：在菲律賓海板塊上，靠近海溝
-  const vx = T + 120, vh = 100 * s.volc;
+  // 碰撞完成後（第 4、5 步），島弧（海岸山脈）和中央山脈之間被陸地連起來：花東縱谷是陸地上的谷地，在海平面之上
+  const valley = Math.max(0, Math.min(1, (s.mtn - 0.6) / 0.4)), vfloor = SL - 14;
+  const vx0 = T + 120, vx = vx0 + 50 * valley, vh = 100 * s.volc; // 縱谷形成時，海岸山脈往東一點，讓谷地看得見
+  const xv = vx0 - 5;                                                  // 板塊交界（花東縱谷）位置
+  if (valley > 0) g += `<g opacity="${valley}"><rect x="${vx0 - 150}" y="${vfloor}" width="${vx - vx0 + 150}" height="${SL + 75 - vfloor}" fill="#b08968"/>` +
+    `<line x1="${vx0 - 150}" y1="${vfloor}" x2="${vx}" y2="${vfloor}" stroke="#2b8a3e" stroke-width="4"/></g>`;
   if (vh > 1) {
     g += `<path d="M${vx - 70},${SL + 72} L${vx},${SL + 70 - vh} L${vx + 70},${SL + 72}Z" fill="#8d6e63" stroke="#5d4037" stroke-width="2"/>` +
       `<path d="M${vx + 60},${SL + 72} L${vx + 110},${SL + 70 - vh * 0.65} L${vx + 160},${SL + 72}Z" fill="#a1887f" stroke="#5d4037" stroke-width="2"/>`;
@@ -129,7 +135,7 @@ function section(s, step, phase) {
   const mh = 150 * s.mtn;
   if (mh > 1) {
     // 山頂高度 peak；二次曲線控制點 c 讓曲線最高點剛好在 peak
-    const L = margin - 70, R = vx - 30, peak = SL + 40 - 0.87 * mh, c = (4 * peak - 2 * SL - 95) / 2;
+    const L = margin - 70, R = vx0 - 30, peak = SL + 40 - 0.87 * mh, c = (4 * peak - 2 * SL - 95) / 2;
     g += `<path d="M${L},${SL + 35} Q${(L + R) / 2 - 20},${c} ${R},${SL + 60} L${R},${SL + 120} Q${(L + R) / 2},${SL + 150 + mh * 0.3} ${L},${SL + 125}Z" fill="#b08968" stroke="#7f5539" stroke-width="2"/>`;
     for (let i = 1; i <= 3; i++) {
       const k = i / 4;
@@ -138,14 +144,14 @@ function section(s, step, phase) {
     if (step >= 3 && mh > 60) g += label((L + R) / 2 - 15, peak + 45, '中央山脈');
   }
   // 板塊移動箭頭
-  g += arrow(Math.min(W - 60, T + 380), 40, Math.min(W - 60, T + 380) - 130, 40, 'var(--pspDark)');
+  g += arrow(W - 25, SL + 90, W - 140, SL + 90, '#fff', 6); // 板塊移動方向：畫在菲律賓海板塊裡
   // 地震
   if (s.quake > 0.5) [[margin + 20, SL + 80], [T + 30, SL + 150], [T + 80, 260], [margin - 40, SL + 110]].forEach(([x, y], i) => {
     if ((Math.floor(performance.now() / 300) + i) % 2) g += `<text x="${x}" y="${y}" font-size="30" fill="#fab005" text-anchor="middle">✸</text>`;
   });
 
   // 文字標示（依步驟出現）
-  g += label(90, SL - 35, '歐亞大陸') + label(Math.min(W - 120, T + 330), SL + 100, '菲律賓海板塊') + label(Math.min(W - 120, T + 330), 25, '往西北移動', 'lbl sm');
+  g += label(90, SL - 35, '歐亞大陸') + label(Math.min(W - 260, T + 230), SL + 96, '菲律賓海板塊') + label(W - 85, SL + 132, '往西北移動', 'lbl sm');
   if (step <= 1) g += label((margin + T) / 2 + 20, SL + 125, '南海（海洋地殼）', 'lbl sm') + label(T + 150, 280, '隱沒', 'lbl sm');
   g += label(margin - 100, SL + 80, '歐亞板塊', 'lbl sm');
   if (vh > 1 && step <= 2) g += label(vx + 40, SL - vh - 10, '呂宋島弧（火山島）');
@@ -153,8 +159,9 @@ function section(s, step, phase) {
   if (step === 2 && phase > 0.5) g += label((margin + vx) / 2 - 10, 40, '碰撞！', 'lbl big');
   if (step >= 3 && mh > 60) {
     g += label(vx + 40, SL - vh - 10, '海岸山脈') +
-      `<line x1="${vx - 30}" y1="${SL - 8}" x2="${vx - 30}" y2="${SL + 120}" stroke="#c92a2a" stroke-width="3" stroke-dasharray="8 6"/>` +
-      label(vx - 30, SL + 155, '花東縱谷（板塊交界）', 'lbl sm') + label(200, SL + 18, '台灣海峽', 'lbl sm');
+      `<line x1="${xv}" y1="${vfloor}" x2="${xv}" y2="${SL + 120}" stroke="#c92a2a" stroke-width="3" stroke-dasharray="8 6"/>` +
+      `<line x1="${xv}" y1="${vfloor - 4}" x2="${xv + 30}" y2="${SL - 70}" stroke="#495057" stroke-width="1.5"/>` +
+      label(xv + 60, SL - 78, '花東縱谷', 'lbl sm') + label(xv + 60, SL - 60, '（板塊交界）', 'lbl sm') + label(200, SL + 18, '台灣海峽', 'lbl sm');
   }
   if (step === 4) g += label(680, 360, '台灣還在長高、地震頻繁', 'lbl big');
   return g;
