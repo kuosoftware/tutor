@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>光學儀器</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #1f2430; --muted: #6b7280; --line: #e5e7eb;
+    --primary: #2f6fed; --primary-soft: #e8f0ff; --radius: 14px;
+    --r1: #e8590c; --r2: #2b8a3e; --r3: #1971c2; --img: #9c36b5; --obj: #1f2430; --lens: #74c0fc;
+    --mirror: #f08c00;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--text); line-height: 1.5;
+    font-family: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px 0; background: var(--card); }
+  header a { color: var(--primary); text-decoration: none; font-size: 15px; }
+  header h1 { font-size: 20px; margin: 0; }
+  /* 分頁籤（窄螢幕可橫向捲動） */
+  .tabs { display: flex; gap: 4px; overflow-x: auto; padding: 8px 16px 0; background: var(--card); border-bottom: 1px solid var(--line); scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs button { flex: none; border: 0; background: transparent; font: inherit; font-size: 15px; padding: 8px 14px; color: var(--muted); border-bottom: 3px solid transparent; cursor: pointer; }
+  .tabs button.on { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 10px 16px 24px; }
+  .card { background: var(--card); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .res { font-size: 18px; font-weight: 700; color: var(--img); }
+  .note { color: var(--text); font-size: 15px; margin-top: 2px; }
+  .sub { color: var(--muted); font-size: 13px; }
+  svg { display: block; width: 100%; height: auto; max-height: calc(100vh - 330px); min-height: 180px; margin: 0 auto; }
+
+  .ctrl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 4px; }
+  .ctrl .zone { font-weight: 600; }
+  .ctrl .val { color: var(--muted); font-size: 14px; margin-left: auto; }
+  .seg { display: inline-flex; background: #eef0f4; border-radius: 10px; padding: 3px; flex-wrap: wrap; }
+  .seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 8px; font: inherit; font-size: 14px; color: var(--muted); cursor: pointer; }
+  .seg button.on { background: #fff; color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+  .check { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; cursor: pointer; }
+  .check input { width: 20px; height: 20px; }
+  /* 卷軸：灰色軌道＋明顯的大圓把手（與透鏡成像頁相同） */
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 44px; margin: 0; background: transparent; cursor: pointer; direction: rtl; }
+  input[type=range]::-webkit-slider-runnable-track { height: 8px; background: #dee2e6; border-radius: 99px; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 34px; height: 34px; margin-top: -13px; border-radius: 50%; background: var(--primary); border: 4px solid #fff; box-shadow: 0 1px 5px rgba(0,0,0,.4); }
+  input[type=range]::-moz-range-track { height: 8px; background: #dee2e6; border-radius: 99px; }
+  input[type=range]::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: var(--primary); border: 4px solid #fff; box-shadow: 0 1px 5px rgba(0,0,0,.4); }
+  input[type=range]:focus { outline: none; }
+
+  /* 構造表＋結論：寬螢幕左右並排 */
+  .info { display: grid; gap: 12px; }
+  @media (min-width: 760px) { .info { grid-template-columns: 3fr 2fr; } }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 13px; }
+  td.kind { font-weight: 700; color: var(--primary); white-space: nowrap; }
+  td.kind.mirror { color: var(--mirror); }
+  h3 { margin: 0 0 6px; font-size: 16px; }
+
+  /* SVG 樣式 */
+  .axis { stroke: #adb5bd; stroke-width: 1.5; }
+  .lbl { font-size: 17px; fill: #495057; text-anchor: middle; font-family: inherit; }
+  .lbl.b { font-weight: 700; fill: var(--text); }
+  .ray { stroke-width: 2.5; fill: none; }
+  .ext { stroke-width: 2; stroke-dasharray: 7 6; fill: none; opacity: .75; }
+  .r1 { stroke: var(--r1); } .r2 { stroke: var(--r2); } .r3 { stroke: var(--r3); } .r4 { stroke: #e64980; }
+  .faint { opacity: .25; }
+</style>
+</head>
+<body>
+<header>
+  <a href="./">‹ 觀念目錄</a>
+  <h1>光學儀器</h1>
+</header>
+<nav class="tabs" id="tabs"></nav>
+
+<main>
+  <div class="card">
+    <div class="res" id="res"></div>
+    <div class="note" id="note"></div>
+    <svg id="svg" viewBox="0 0 1000 300" preserveAspectRatio="xMidYMid meet"></svg>
+    <div id="ctrl"></div>
+  </div>
+  <div class="info">
+    <div class="card"><h3>構造：用什麼透鏡／面鏡</h3><table id="parts"></table></div>
+    <div class="card" id="extra"></div>
+  </div>
+</main>
+
+<script>
+/* ===== 共用：座標與畫圖小工具（沿用透鏡成像頁的寫法） ===== */
+const W = 1000, HV = 300, AY = 150;
+const Y = h => AY - h; // 高度（往上為正）→ SVG y
+const seg = (x1, h1, x2, h2, cls) => `<line x1="${x1}" y1="${Y(h1)}" x2="${x2}" y2="${Y(h2)}" class="${cls}"/>`;
+const text = (x, h, s, cls = 'lbl') => `<text x="${x}" y="${Y(h)}" class="${cls}">${s}</text>`;
+function arrow(x, h, color, dashed, faint) {
+  const up = h > 0, k = 12, tip = Y(h), back = tip + (up ? k : -k);
+  return `<g ${faint ? 'class="faint"' : ''}><line x1="${x}" y1="${AY}" x2="${x}" y2="${tip}" stroke="${color}" stroke-width="4" ${dashed ? 'stroke-dasharray="8 6"' : ''}/>` +
+    `<polygon points="${x},${tip} ${x - 9},${back} ${x + 9},${back}" fill="${dashed ? '#fff' : color}" stroke="${color}" stroke-width="2"/></g>`;
+}
+function lens(x, f, half, label, faint) {
+  const T = Y(half), B = Y(-half);
+  const shape = f > 0
+    ? `<path d="M${x},${T} Q${x + 30},${AY} ${x},${B} Q${x - 30},${AY} ${x},${T}Z"/>`
+    : `<path d="M${x - 14},${T} L${x + 14},${T} Q${x + 3},${AY} ${x + 14},${B} L${x - 14},${B} Q${x - 3},${AY} ${x - 14},${T}Z"/>`;
+  return `<g fill="var(--lens)" fill-opacity=".35" stroke="var(--lens)" stroke-width="2" ${faint ? 'class="faint"' : ''}>${shape}</g>` +
+    (label ? text(x, half + 12, label, 'lbl b') : '');
+}
+const axis = () => seg(0, 0, W, 0, 'axis');
+const focus = (x, label = 'F') => `<circle cx="${x}" cy="${AY}" r="4" fill="#868e96"/>` + text(x, -26, label);
+
+/* ===== 近軸光線追跡 =====
+   光線：(x, 高度 h, 斜率 s)；遇到透鏡高度不變、斜率 s' = s − h/f；遇到稜鏡把像上下翻轉 */
+function trace(x, h, s, els, xEnd) {
+  const runs = [[[x, h]]];
+  let last = [x, h]; // 最後一次穿過透鏡的位置（反向延長線從這裡畫）
+  for (const el of els) {
+    if (el.x <= x || el.x > xEnd) continue;
+    if (el.flip) {
+      const xl = el.x - el.w / 2, xr = el.x + el.w / 2;
+      h += s * (xl - x); x = xl; runs[runs.length - 1].push([x, h]);
+      h = -h; s = -s; h += s * (xr - x); x = xr; runs.push([[x, h]]); // 稜鏡內部不畫
+    } else {
+      h += s * (el.x - x); x = el.x; runs[runs.length - 1].push([x, h]);
+      s -= h / el.f; last = [x, h];
+    }
+  }
+  h += s * (xEnd - x); runs[runs.length - 1].push([xEnd, h]);
+  return { runs, last };
+}
+const drawRuns = (runs, cls) => runs.map(r => `<polyline points="${r.map(([x, h]) => `${x},${Y(h)}`).join(' ')}" class="${cls}"/>`).join('');
+// 逐片計算成像：1/u + 1/v = 1/f，前一片的像當下一片的物；稜鏡把像翻正
+function images(ox, oh, els) {
+  const out = []; let x = ox, h = oh;
+  for (const el of els) {
+    if (el.flip) { h = -h; continue; }
+    const u = el.x - x, v = u * el.f / (u - el.f);
+    h = -v / u * h; x = el.x + v;
+    out.push({ x, h, real: v > 0 });
+  }
+  return out;
+}
+// 物體頂點的三條主要光線（對第一片透鏡）：①平行主軸 ②射向光心 ③射向（通過）焦點
+function principal(ox, oh, L) {
+  return [0, -oh / (L.x - ox), -oh / (L.x - L.f - ox)];
+}
+const RC = ['ray r1', 'ray r2', 'ray r3'], EC = ['ext r1', 'ext r2', 'ext r3'];
+const clip = s => `<clipPath id="clip"><rect width="${W}" height="${HV}"/></clipPath><g clip-path="url(#clip)">${s}</g>`;
+
+/* ===== 卷軸／按鈕控制 ===== */
+function slider({ min, max, step = 0.01, zone, val }) {
+  return { kind: 'slider', min, max, step, zone, val };
+}
+const steps = { kind: 'steps', options: [['1', '① 物鏡成像'], ['2', '② 目鏡放大（完整）']] };
+
+/* ===== 各儀器 ===== */
+const INSTR = [
+  {
+    id: 'camera', name: '照相機', state: { u: 3 },
+    ctrl: slider({ min: 2.05, max: 5, zone: () => '物體在 2F 以外', val: s => `物距 = ${s.u.toFixed(2)} F` }),
+    parts: [['鏡頭', '凸透鏡', '讓光線折射，在感光元件上成像'], ['感光元件（底片）', '—', '接收光線；像成在這裡'], ['暗箱（機身，圖中虛線框）', '—', '不透光，只讓光從鏡頭進來'], ['光圈', '—', '控制進光量'], ['快門', '—', '控制曝光時間']],
+    draw(s) {
+      const LX = 600, F = 110, H = 60, ox = LX - s.u * F, L = { x: LX, f: F }, [img] = images(ox, H, [L]);
+      let g = axis() + `<rect x="${LX - 20}" y="${Y(120)}" width="${img.x - LX + 40}" height="240" rx="10" fill="none" stroke="#adb5bd" stroke-dasharray="6 6"/>` +
+        focus(LX - F) + focus(LX + F) + focus(LX - 2 * F, '2F') + focus(LX + 2 * F, '2F');
+      principal(ox, H, L).forEach((sl, i) => g += drawRuns(trace(ox, H, sl, [L], img.x).runs, RC[i]));
+      g += lens(LX, F, 105, '鏡頭（凸透鏡）') + arrow(ox, H, 'var(--obj)') + text(ox, H + 16, '物體') +
+        `<rect x="${img.x}" y="${Y(100)}" width="8" height="200" fill="#495057"/>` + text(img.x + 4, -122, '感光元件') + arrow(img.x - 6, img.h, 'var(--img)');
+      return { svg: g, res: '倒立・縮小・實像', note: '物體在 2F 以外，像成在鏡頭另一側的 F～2F 之間。拍越遠的東西，感光元件要越靠近鏡頭（這就是對焦）。' };
+    },
+  },
+  {
+    id: 'projector', name: '投影機', state: { u: 1.5 },
+    ctrl: slider({ min: 1.3, max: 1.9, zone: () => '投影片在 F 與 2F 之間', val: s => `物距 = ${s.u.toFixed(2)} F` }),
+    parts: [['放映鏡頭', '凸透鏡', '把投影片的像放大投射到銀幕'], ['反光鏡', '凹面鏡', '把燈泡往後射的光反射回前方，增加亮度'], ['聚光鏡', '凸透鏡', '把光集中照亮投影片'], ['光源', '燈泡', '發光'], ['銀幕', '—', '承接實像']],
+    draw(s) {
+      const LX = 380, F = 100, H = -40, ox = LX - s.u * F, L = { x: LX, f: F }, [img] = images(ox, H, [L]);
+      let g = axis() + focus(LX - F) + focus(LX + F) + focus(LX - 2 * F, '2F') + focus(LX + 2 * F, '2F');
+      // 光源、凹面鏡、聚光鏡（跟著投影片移動）
+      const bx = ox - 125, mx = ox - 162, cx = ox - 82;
+      g += `<path d="M${mx + 14},${Y(55)} Q${mx - 18},${AY} ${mx + 14},${Y(-55)}" fill="none" stroke="var(--mirror)" stroke-width="5"/>` + text(mx, 70, '凹面鏡', 'lbl b') +
+        `<circle cx="${bx}" cy="${AY}" r="15" fill="#ffd43b" stroke="#f59f00" stroke-width="2"/>` + text(bx, -40, '光源') +
+        lens(cx, 60, 45, '') + text(cx, -68, '聚光鏡');
+      principal(ox, H, L).forEach((sl, i) => g += drawRuns(trace(ox, H, sl, [L], img.x).runs, RC[i]));
+      g += `<rect x="${ox - 4}" y="${Y(55)}" width="8" height="110" fill="none" stroke="#868e96"/>` + arrow(ox, H, 'var(--obj)') + text(ox, 70, '投影片（倒放）') +
+        lens(LX, F, 105, '放映鏡頭（凸透鏡）') +
+        `<line x1="${img.x + 6}" y1="10" x2="${img.x + 6}" y2="290" stroke="#495057" stroke-width="5"/>` + text(img.x - 30, 128, '銀幕') + arrow(img.x, img.h, 'var(--img)');
+      return { svg: g, res: '倒立・放大・實像', note: '投影片放在 F～2F 之間。因為成的是倒立的像，投影片要倒著放，銀幕上看到的才是正的。' };
+    },
+  },
+  {
+    id: 'magnifier', name: '放大鏡', state: { u: 0.6 },
+    ctrl: slider({ min: 0.3, max: 0.75, zone: () => '物體在焦點 F 以內', val: s => `物距 = ${s.u.toFixed(2)} F` }),
+    parts: [['放大鏡', '凸透鏡', '物體放在焦點以內，眼睛從另一側看到放大的像']],
+    draw(s) {
+      const LX = 600, F = 150, H = 30, ox = LX - s.u * F, L = { x: LX, f: F }, [img] = images(ox, H, [L]);
+      let g = axis() + focus(LX - F) + focus(LX + F);
+      principal(ox, H, L).forEach((sl, i) => {
+        const t = trace(ox, H, sl, [L], W + 200);
+        g += drawRuns(t.runs, RC[i]) + seg(...t.last, img.x, img.h, EC[i]);
+      });
+      g += lens(LX, F, 110, '放大鏡（凸透鏡）') + arrow(ox, H, 'var(--obj)') + arrow(img.x, img.h, 'var(--img)', true) + text(img.x, img.h + 16, '看到的像') + eye(900);
+      return { svg: g, res: '正立・放大・虛像', note: `物體要放在焦點 F 以內；越靠近焦點，像越大（此圖放大 ${img.h / H > 9.9 ? '10 倍以上' : (img.h / H).toFixed(1) + ' 倍'}）。` };
+    },
+  },
+  {
+    id: 'compound', name: '複式顯微鏡', state: { step: '2' }, ctrl: steps,
+    parts: [['目鏡', '凸透鏡', '把物鏡的像再放大（當放大鏡用）'], ['物鏡', '凸透鏡（焦距短）', '先成倒立放大的實像'], ['反光鏡', '平面鏡／凹面鏡', '把光反射到標本；光線弱時用凹面鏡聚光'], ['光圈', '—', '調整亮度'], ['載物台', '—', '放置載玻片（標本）']],
+    draw: s => scope(s, false),
+    extra: '<h3>重點</h3><p class="note">總放大倍率 ＝ 物鏡倍率 × 目鏡倍率。<br>看到的像上下左右都顛倒：標本往左移，看到的像往右移。</p><p class="sub">示意圖橫著畫；實際的顯微鏡是直立的，目鏡在上、物鏡在下、反光鏡在最下面。</p>',
+  },
+  {
+    id: 'dissecting', name: '解剖顯微鏡', state: { step: '2' }, ctrl: steps,
+    parts: [['目鏡', '凸透鏡', '把像再放大'], ['物鏡', '凸透鏡', '先成放大的實像（倒立）'], ['稜鏡', '稜鏡（全反射）', '把倒立的像轉正'], ['左右兩組鏡筒', '—', '兩眼各看一組，產生立體感']],
+    draw: s => scope(s, true),
+    extra: `<h3>跟複式顯微鏡比較</h3><table>
+      <tr><th></th><th>複式顯微鏡</th><th>解剖顯微鏡</th></tr>
+      <tr><td>看到的像</td><td>倒立</td><td>正立</td></tr>
+      <tr><td>放大倍率</td><td>高</td><td>低</td></tr>
+      <tr><td>立體感</td><td>沒有</td><td>有</td></tr>
+      <tr><td>觀察對象</td><td>細胞、微生物（要做成薄片）</td><td>昆蟲、花、較大的標本</td></tr></table>`,
+  },
+  {
+    id: 'telescope', name: '天文望遠鏡', state: { step: '2' }, ctrl: steps,
+    parts: [['物鏡', '凸透鏡（焦距長、口徑大）', '收集遠方的光，在焦點附近成倒立縮小的實像'], ['目鏡', '凸透鏡（焦距短）', '把物鏡的像放大（當放大鏡用）'], ['反射式望遠鏡的物鏡', '凹面鏡', '用凹面鏡反射聚光，可以做得很大（大型天文台）']],
+    draw: telescope,
+    extra: '<h3>重點</h3><p class="note">看星星、月亮，像上下顛倒沒有關係。<br>物鏡焦距越長、目鏡焦距越短，放大倍率越大（倍率 ≈ 物鏡焦距 ÷ 目鏡焦距）。</p>',
+  },
+  {
+    id: 'eye', name: '眼睛與矯正', state: { kind: 'normal', glasses: false }, ctrl: { kind: 'eye' },
+    parts: [['水晶體', '凸透鏡', '折射光線，在視網膜上成像'], ['睫狀肌', '—', '改變水晶體的厚薄，調整焦距'], ['瞳孔（虹膜）', '—', '像光圈，調整進光量'], ['視網膜', '—', '像感光元件；成倒立縮小的實像'], ['近視眼鏡', '凹透鏡', '先讓光發散，像往後移到視網膜上'], ['遠視眼鏡', '凸透鏡', '先讓光會聚，像往前移到視網膜上']],
+    draw: eyeDiagram,
+  },
+];
+
+/* 眼睛小圖示 */
+function eye(x) {
+  return `<g stroke="#495057" stroke-width="2" fill="none"><path d="M${x - 28},${AY} Q${x},${AY - 22} ${x + 28},${AY} Q${x},${AY + 22} ${x - 28},${AY}Z"/><circle cx="${x - 6}" cy="${AY}" r="8" fill="#495057"/></g>` + text(x, -40, '眼睛');
+}
+
+/* 複式／解剖顯微鏡：物鏡 →（稜鏡）→ 目鏡 */
+function scope(s, prism) {
+  const H = 18, ox = 150, OBJ = { x: 230, f: 55 }, EYE = { x: 498, f: 150 }, PR = { x: 452, w: 36, flip: true };
+  const els = prism ? [OBJ, PR, EYE] : [OBJ, EYE];
+  const imgs = images(ox, H, els), I1 = images(ox, H, [OBJ])[0], fin = imgs[imgs.length - 1];
+  const full = s.step === '2';
+  let g = axis() + focus(OBJ.x - OBJ.f) + focus(OBJ.x + OBJ.f) + focus(EYE.x - EYE.f, 'F（目鏡）') + focus(EYE.x + EYE.f, 'F（目鏡）');
+  principal(ox, H, OBJ).forEach((sl, i) => {
+    const t = trace(ox, H, sl, full ? els : [OBJ], full ? W + 200 : I1.x);
+    g += drawRuns(t.runs, RC[i]);
+    if (full) g += seg(...t.last, fin.x, fin.h, EC[i]);
+  });
+  if (prism) g += `<rect x="${PR.x - PR.w / 2}" y="${Y(105)}" width="${PR.w}" height="210" fill="#e7f5ff" stroke="#74c0fc" stroke-width="2" ${full ? '' : 'class="faint"'}/>` +
+    `<line x1="${PR.x - PR.w / 2}" y1="${Y(105)}" x2="${PR.x + PR.w / 2}" y2="${Y(-105)}" stroke="#74c0fc" stroke-width="2"/>` + text(PR.x, 132, '稜鏡', 'lbl b');
+  g += lens(OBJ.x, OBJ.f, 70, '物鏡') + lens(EYE.x, EYE.f, 110, '目鏡', !full) + arrow(ox, H, 'var(--obj)') + text(ox, H + 16, '標本') +
+    arrow(I1.x, I1.h, 'var(--img)', false, full) + text(I1.x + 30, I1.h - 4, full ? '' : '物鏡的像') +
+    (full ? arrow(fin.x, fin.h, 'var(--img)', true) + text(fin.x - 46, fin.h + (fin.h > 0 ? 10 : -20), '看到的像') : '') + eye(900);
+  const m1 = I1.h / H, m = fin.h / H;
+  return full
+    ? { svg: g, res: prism ? '正立・放大・虛像（有立體感）' : '倒立・放大・虛像', note: `物鏡先成倒立放大的實像${prism ? '，稜鏡把它轉正' : ''}，目鏡再當放大鏡把它放大。此圖：物鏡 ${Math.abs(m1).toFixed(1)} 倍 × 目鏡 ${(Math.abs(m) / Math.abs(m1)).toFixed(1)} 倍 ≈ ${Math.abs(m).toFixed(1)} 倍。` }
+    : { svg: g, res: '物鏡：倒立・放大・實像', note: '標本放在物鏡的 F～2F 之間，物鏡先成一個倒立放大的實像，這個像落在目鏡的焦點以內。' };
+}
+
+/* 天文望遠鏡：遠方平行光 → 物鏡（焦距長）→ 目鏡 */
+function telescope(s) {
+  const OBJ = { x: 150, f: 420 }, EYE = { x: 645, f: 100 }, s0 = -0.08; // 星光斜斜射入
+  const I1 = { x: OBJ.x + OBJ.f, h: s0 * OBJ.f };
+  const u2 = EYE.x - I1.x, v2 = u2 * EYE.f / (u2 - EYE.f), fin = { x: EYE.x + v2, h: -v2 / u2 * I1.h };
+  const full = s.step === '2';
+  let g = axis() + focus(I1.x, 'F（物鏡）') + focus(EYE.x + EYE.f, 'F（目鏡）') +
+    `<text x="40" y="40" font-size="30" fill="#f59f00">★</text>` + text(110, 100, '遠方星體的光', 'lbl');
+  [60, 0, -60].forEach((hObj, i) => {
+    const t = trace(0, hObj - s0 * OBJ.x, s0, full ? [OBJ, EYE] : [OBJ], full ? W + 200 : I1.x);
+    g += drawRuns(t.runs, RC[i]);
+    if (full) g += seg(...t.last, fin.x, fin.h, EC[i]);
+  });
+  g += lens(OBJ.x, OBJ.f, 90, '') + text(OBJ.x, -114, '物鏡（焦距長）', 'lbl b') + lens(EYE.x, EYE.f, 70, '目鏡', !full) +
+    arrow(I1.x, I1.h, 'var(--img)', false, full) + text(I1.x + 6, I1.h - 22, full ? '' : '物鏡的像') +
+    (full ? arrow(fin.x, fin.h, 'var(--img)', true) + text(fin.x - 46, fin.h + 10, '看到的像') : '') + eye(900);
+  return full
+    ? { svg: g, res: '倒立・放大・虛像', note: '物鏡把遠方的光在焦點附近聚成倒立縮小的實像，目鏡再當放大鏡把它放大。' }
+    : { svg: g, res: '物鏡：倒立・縮小・實像', note: '遠方星體的光幾乎是平行光，經過物鏡後在物鏡焦點附近成倒立縮小的實像。' };
+}
+
+/* 眼睛：正常／近視／遠視，可戴眼鏡 */
+function eyeDiagram(s) {
+  const LX = 600, RET = 805, GX = 500, fEye = { normal: 205, myopia: 165, hyper: 255 }[s.kind];
+  const els = [{ x: LX, f: fEye }];
+  const wear = s.glasses && s.kind !== 'normal';
+  if (wear) { // 眼鏡焦距：讓光線剛好聚在視網膜上
+    const d0 = 1 / (1 / fEye - 1 / (RET - LX));
+    els.unshift({ x: GX, f: -(d0 - (LX - GX)) });
+  }
+  let g = axis() + `<circle cx="${(LX + RET) / 2}" cy="${AY}" r="${(RET - LX) / 2 + 8}" fill="#fff5f5" stroke="#ced4da" stroke-width="2"/>` +
+    `<path d="M${RET - 4},${Y(70)} Q${RET + 12},${AY} ${RET - 4},${Y(-70)}" fill="none" stroke="#e03131" stroke-width="5"/>` + text(RET + 40, 92, '視網膜', 'lbl b') +
+    text(150, 100, '遠方物體的光', 'lbl');
+  [70, 35, -35, -70].forEach((h0, i) => g += drawRuns(trace(0, h0, 0, els, RET).runs, ['ray r1', 'ray r3', 'ray r3', 'ray r1'][i]));
+  // 沒戴眼鏡時，焦點在哪裡
+  const fx = LX + fEye;
+  if (!wear && s.kind !== 'normal') g += `<circle cx="${fx}" cy="${AY}" r="6" fill="var(--img)"/>` + text(fx, -100, s.kind === 'myopia' ? '焦點在視網膜前' : '焦點在視網膜後', 'lbl');
+  g += lens(LX, fEye, 70, '水晶體');
+  if (wear) g += lens(GX, els[0].f, 95, els[0].f < 0 ? '凹透鏡（近視眼鏡）' : '凸透鏡（遠視眼鏡）');
+  const R = {
+    normal: ['看得清楚', '光線經過水晶體（凸透鏡）後，剛好聚焦在視網膜上，成倒立縮小的實像。'],
+    myopia: wear ? ['近視＋凹透鏡：看清楚了', '凹透鏡先讓光線發散，聚焦的位置往後移，剛好落回視網膜上。'] : ['近視：看遠處模糊', '水晶體太凸（焦距太短）或眼球太長，像落在視網膜的前方。'],
+    hyper: wear ? ['遠視＋凸透鏡：看清楚了', '凸透鏡先讓光線會聚，聚焦的位置往前移，剛好落回視網膜上。'] : ['遠視：像落在視網膜後方', '水晶體太扁（焦距太長）或眼球太短，像落在視網膜的後方。'],
+  }[s.kind];
+  return { svg: g, res: R[0], note: R[1] };
+}
+
+/* ===== 畫面切換與控制 ===== */
+let cur = INSTR[0];
+const $ = id => document.getElementById(id);
+$('tabs').innerHTML = INSTR.map(t => `<button data-id="${t.id}">${t.name}</button>`).join('');
+$('tabs').onclick = e => { const b = e.target.closest('button'); if (b) show(b.dataset.id); };
+
+function render() {
+  const r = cur.draw(cur.state);
+  $('svg').innerHTML = clip(r.svg);
+  $('res').textContent = r.res;
+  $('note').textContent = r.note;
+  const c = cur.ctrl;
+  if (c.kind === 'slider') {
+    $('ctrl').querySelector('.zone').textContent = c.zone(cur.state);
+    $('ctrl').querySelector('.val').textContent = c.val(cur.state);
+  }
+}
+
+function show(id) {
+  cur = INSTR.find(t => t.id === id);
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.id === id));
+  $('parts').innerHTML = '<tr><th>部件</th><th>用什麼</th><th>作用</th></tr>' + cur.parts.map(([p, k, d]) =>
+    `<tr><td>${p}</td><td class="kind ${/面鏡/.test(k) ? 'mirror' : ''}">${k}</td><td>${d}</td></tr>`).join('');
+  $('extra').innerHTML = cur.extra || '';
+  $('extra').style.display = cur.extra ? '' : 'none';
+
+  const c = cur.ctrl, st = cur.state;
+  if (c.kind === 'slider') {
+    $('ctrl').innerHTML = `<div class="ctrl"><span class="zone"></span><span class="val"></span></div>
+      <input type="range" min="${c.min}" max="${c.max}" step="${c.step}" value="${st.u}" aria-label="物體位置">`;
+    $('ctrl').querySelector('input').oninput = e => { st.u = +e.target.value; render(); };
+  } else if (c.kind === 'steps') {
+    $('ctrl').innerHTML = `<div class="ctrl"><div class="seg">${c.options.map(([v, l]) => `<button data-v="${v}" class="${st.step === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>`;
+    $('ctrl').querySelectorAll('button').forEach(b => b.onclick = () => {
+      st.step = b.dataset.v; $('ctrl').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); render();
+    });
+  } else { // 眼睛
+    $('ctrl').innerHTML = `<div class="ctrl"><div class="seg">${[['normal', '正常'], ['myopia', '近視'], ['hyper', '遠視']].map(([v, l]) =>
+      `<button data-v="${v}" class="${st.kind === v ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <label class="check"><input type="checkbox" ${st.glasses ? 'checked' : ''}> 戴眼鏡</label></div>`;
+    $('ctrl').querySelectorAll('button').forEach(b => b.onclick = () => {
+      st.kind = b.dataset.v; $('ctrl').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); render();
+    });
+    $('ctrl').querySelector('input').onchange = e => { st.glasses = e.target.checked; render(); };
+  }
+  render();
+}
+
+show(INSTR[0].id);
+</script>
+</body>
+</html>
